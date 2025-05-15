@@ -1,0 +1,2963 @@
+total 1068
+drwxr-xr-x 1 runner runner    634 May 15 06:03 .
+drwxrwxrwx 1 runner runner     54 May 15 05:31 ..
+drwxr-xr-x 1 runner runner     62 May 15 05:29 assets
+drwxr-xr-x 1 runner runner     68 May 15 05:57 attached_assets
+-rw-r--r-- 1 runner runner   4772 May 15 05:36 background.js
+drwxr-xr-x 1 runner runner     32 May 15 05:31 .cache
+-rw-r--r-- 1 runner runner   1215 May 15 05:53 CHANGELOG.md
+-rw-r--r-- 1 runner runner   5315 May 15 05:26 content.js
+drwxr-xr-x 1 runner runner    184 May 15 05:58 extension_files
+-rw-r--r-- 1 runner runner 239671 May 15 05:25 generated-icon.png
+drwxr-xr-x 1 runner runner    144 May 15 05:58 .git
+-rw-r--r-- 1 runner runner 257092 May 15 05:53 hotmart-uploader-extension-v1.0.1.tar.gz
+-rw-r--r-- 1 runner runner 520418 May 15 05:58 hotmart-uploader-extension-v1.0.1.zip
+-rw-r--r-- 1 runner runner   2621 May 15 05:58 INSTRUÇÕES_DE_INSTALAÇÃO.txt
+drwxr-xr-x 1 runner runner     10 May 15 05:25 .local
+-rw-r--r-- 1 runner runner    962 May 15 05:51 manifest.json
+-rw-r--r-- 1 runner runner   3617 May 15 05:52 popup.css
+-rw-r--r-- 1 runner runner   2987 May 15 05:51 popup.html
+-rw-r--r-- 1 runner runner  16107 May 15 05:46 popup.js
+-rw-r--r-- 1 runner runner      0 May 15 06:03 projeto_estrutura.txt
+-rw-r--r-- 1 runner runner    574 May 15 05:50 .replit
+-rw-r--r-- 1 runner runner   1618 May 15 05:58 RESOLUÇÃO_DE_ERRO.md
+drwxr-xr-x 1 runner runner     66 May 15 05:51 temp
+drwxr-xr-x 1 runner runner     20 May 15 05:30 .upm
+drwxr-xr-x 1 runner runner    104 May 15 05:50 utils
+CONTEÚDO DOS ARQUIVOS PRINCIPAIS:
+
+
+== manifest.json ==
+{
+  "manifest_version": 3,
+  "name": "Hotmart Upload Automático",
+  "version": "1.0.1",
+  "description": "Automatiza o upload de arquivos para a plataforma Hotmart com comportamento humano",
+  "permissions": [
+    "activeTab",
+    "storage",
+    "scripting",
+    "tabs"
+  ],
+  "host_permissions": [
+    "https://*.hotmart.com/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "assets/icon16.svg",
+      "48": "assets/icon48.svg",
+      "128": "assets/icon128.svg"
+    }
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://*.hotmart.com/*"],
+      "js": ["content.js"],
+      "run_at": "document_end"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["utils/*"],
+      "matches": ["https://*.hotmart.com/*"]
+    }
+  ],
+  "icons": {
+    "16": "assets/icon16.svg",
+    "48": "assets/icon48.svg",
+    "128": "assets/icon128.svg"
+  }
+}
+
+
+== popup.html ==
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Hotmart Upload Automático</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Hotmart Upload Automático</h1>
+    </header>
+    
+    <div class="status-container">
+      <div class="status-label">Status:</div>
+      <div id="status" class="status-value">Aguardando comando</div>
+    </div>
+    
+    <div class="configuracoes">
+      <h2>Configurações</h2>
+      
+      <div class="config-item">
+        <label for="delayMinimo">Delay mínimo (ms):</label>
+        <input type="number" id="delayMinimo" min="200" max="5000" value="800">
+      </div>
+      
+      <div class="config-item">
+        <label for="delayMaximo">Delay máximo (ms):</label>
+        <input type="number" id="delayMaximo" min="500" max="10000" value="2000">
+      </div>
+      
+      <div class="config-item checkbox">
+        <input type="checkbox" id="verificarSucessoUpload" checked>
+        <label for="verificarSucessoUpload">Verificar sucesso do upload</label>
+      </div>
+      
+      <h3>Arquivos para Upload</h3>
+      
+      <div class="config-item upload-config">
+        <label for="arquivoCapa">Imagem de Capa:</label>
+        <input type="file" id="arquivoCapa" accept="image/*">
+      </div>
+      
+      <div class="config-item upload-config">
+        <label for="arquivoConteudo">Arquivo Principal (PDF):</label>
+        <input type="file" id="arquivoConteudo" accept=".pdf,.zip,.rar,.doc,.docx">
+      </div>
+      
+      <div class="config-item upload-config">
+        <label for="arquivosAdicionais">Arquivos Adicionais (até 500):</label>
+        <input type="file" id="arquivosAdicionais" multiple>
+      </div>
+      
+      <div class="config-item checkbox">
+        <input type="checkbox" id="modoLote" checked>
+        <label for="modoLote">Modo de Upload em Lote (melhor para muitos arquivos)</label>
+      </div>
+      
+      <div class="config-item">
+        <label for="limiteArquivos">Máximo de arquivos por upload:</label>
+        <input type="number" id="limiteArquivos" min="1" max="500" value="50">
+      </div>
+      
+      <div class="files-status">
+        <div id="arquivosPreparados">Nenhum arquivo selecionado</div>
+      </div>
+    </div>
+    
+    <div class="buttons">
+      <button id="btnIniciar" class="btn btn-primary">Iniciar Automação</button>
+      <button id="btnParar" class="btn btn-danger" disabled>Parar Automação</button>
+    </div>
+    
+    <div class="info">
+      <p>Esta extensão automatiza o upload de arquivos na plataforma Hotmart com comportamento humano.</p>
+      <p class="note">Importante: Mantenha a aba da Hotmart aberta durante o processo.</p>
+      <p class="version">Versão 1.0.1 - Suporte para até 500 arquivos com processamento em lotes</p>
+    </div>
+  </div>
+  
+  <script src="popup.js"></script>
+</body>
+</html>
+
+
+== popup.css ==
+/* Estilos para o popup da extensão */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background-color: #f9f9f9;
+  color: #333;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.container {
+  width: 320px;
+  padding: 16px;
+}
+
+header {
+  margin-bottom: 16px;
+  border-bottom: 2px solid #f37335;
+  padding-bottom: 12px;
+}
+
+h1 {
+  font-size: 18px;
+  color: #f37335;
+  text-align: center;
+}
+
+h2 {
+  font-size: 16px;
+  margin-bottom: 12px;
+  color: #555;
+}
+
+.status-container {
+  background-color: #f1f1f1;
+  border-radius: 4px;
+  padding: 10px;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+}
+
+.status-label {
+  font-weight: bold;
+  margin-right: 8px;
+}
+
+.status-value {
+  color: #666;
+  flex: 1;
+}
+
+.status-value.ativo {
+  color: #2e7d32;
+  font-weight: bold;
+}
+
+.configuracoes {
+  background-color: #fff;
+  border-radius: 4px;
+  padding: 12px;
+  margin-bottom: 16px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.config-item {
+  margin-bottom: 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.config-item.checkbox {
+  justify-content: flex-start;
+}
+
+.config-item.checkbox input {
+  margin-right: 8px;
+}
+
+label {
+  font-weight: 500;
+  color: #555;
+}
+
+input[type="number"] {
+  width: 100px;
+  padding: 6px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+input[type="checkbox"] {
+  transform: scale(1.2);
+}
+
+.buttons {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.btn {
+  flex: 1;
+  padding: 10px;
+  border: none;
+  border-radius: 4px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn-primary {
+  background-color: #f37335;
+  color: white;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background-color: #e56325;
+}
+
+.btn-danger {
+  background-color: #e53935;
+  color: white;
+}
+
+.btn-danger:hover:not(:disabled) {
+  background-color: #d32f2f;
+}
+
+.info {
+  background-color: #e8f4fd;
+  border-radius: 4px;
+  padding: 10px;
+  font-size: 12px;
+  color: #555;
+}
+
+.note {
+  margin-top: 8px;
+  color: #d32f2f;
+  font-weight: 500;
+}
+
+/* Estilos para seção de upload de arquivos */
+h3 {
+  font-size: 14px;
+  margin: 15px 0 10px;
+  color: #666;
+  border-top: 1px solid #eee;
+  padding-top: 12px;
+}
+
+.upload-config {
+  margin-bottom: 10px;
+}
+
+.upload-config label {
+  display: block;
+  margin-bottom: 5px;
+  font-size: 13px;
+}
+
+.upload-config input[type="file"] {
+  width: 100%;
+  border: 1px dashed #ccc;
+  padding: 6px;
+  border-radius: 4px;
+  background-color: #f9f9f9;
+  font-size: 12px;
+}
+
+.upload-config input[type="file"]:hover {
+  border-color: #f37335;
+  background-color: #fff;
+}
+
+.files-status {
+  margin-top: 12px;
+  font-size: 12px;
+  color: #666;
+  background-color: #f5f5f5;
+  border-radius: 4px;
+  padding: 8px;
+}
+
+#arquivosPreparados {
+  color: #555;
+  font-style: italic;
+}
+
+.file-item {
+  display: flex;
+  align-items: center;
+  margin: 4px 0;
+  font-size: 11px;
+}
+
+.file-item:before {
+  content: "✓";
+  color: #4caf50;
+  margin-right: 5px;
+  font-weight: bold;
+}
+
+.file-error {
+  color: #d32f2f;
+  font-size: 11px;
+  margin-top: 4px;
+}
+
+.file-item-collapsed {
+  color: #888;
+  font-style: italic;
+  font-size: 11px;
+  margin: 4px 0;
+  margin-left: 15px;
+}
+
+.file-batch-info {
+  background-color: #fff3e0;
+  color: #e65100;
+  padding: 5px 8px;
+  margin-top: 8px;
+  border-radius: 3px;
+  font-size: 11px;
+  border-left: 2px solid #ff9800;
+}
+
+.version {
+  color: #888;
+  font-size: 11px;
+  margin-top: 8px;
+  text-align: center;
+  border-top: 1px solid #eee;
+  padding-top: 8px;
+}
+
+
+== popup.js ==
+// Script para controlar a interface do popup da extensão
+
+// Variável que rastreia o último tempo de interação do usuário
+// Usado para evitar padrões robóticos de interação
+let ultimaInteracaoUsuario = Date.now() - Math.floor(Math.random() * 60000);
+
+// Adiciona variabilidade no tempo de carregamento para parecer mais natural
+setTimeout(() => {
+  console.log('Interface carregada');
+}, Math.floor(Math.random() * 150) + 50);
+
+// Elementos da interface
+const statusElement = document.getElementById('status');
+const btnIniciar = document.getElementById('btnIniciar');
+const btnParar = document.getElementById('btnParar');
+const delayMinimoInput = document.getElementById('delayMinimo');
+const delayMaximoInput = document.getElementById('delayMaximo');
+const verificarSucessoUploadCheckbox = document.getElementById('verificarSucessoUpload');
+
+// Elementos de upload de arquivos
+const arquivoCapaInput = document.getElementById('arquivoCapa');
+const arquivoConteudoInput = document.getElementById('arquivoConteudo');
+const arquivosAdicionaisInput = document.getElementById('arquivosAdicionais');
+const arquivosPreparadosEl = document.getElementById('arquivosPreparados');
+const modoLoteCheckbox = document.getElementById('modoLote');
+const limiteArquivosInput = document.getElementById('limiteArquivos');
+
+// Estado da interface
+let automacaoAtiva = false;
+
+// Armazena os arquivos selecionados
+let arquivosSelecionados = {
+  capa: null,
+  conteudo: null,
+  adicionais: []
+};
+
+// Atualiza a interface com base no estado da automação
+function atualizarInterface(ativa) {
+  automacaoAtiva = ativa;
+  
+  btnIniciar.disabled = ativa;
+  btnParar.disabled = !ativa;
+  
+  delayMinimoInput.disabled = ativa;
+  delayMaximoInput.disabled = ativa;
+  verificarSucessoUploadCheckbox.disabled = ativa;
+  
+  if (ativa) {
+    statusElement.classList.add('ativo');
+  } else {
+    statusElement.classList.remove('ativo');
+  }
+}
+
+// Atualiza o status exibido
+function atualizarStatus(mensagem) {
+  statusElement.textContent = mensagem;
+}
+
+// Verifica o estado atual da automação na aba ativa
+function verificarEstadoAutomacao() {
+  chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+    if (tabs.length > 0 && tabs[0].url.includes('hotmart.com')) {
+      chrome.tabs.sendMessage(tabs[0].id, { action: 'verificarEstado' }, (response) => {
+        if (chrome.runtime.lastError) {
+          console.log('Erro ao verificar estado:', chrome.runtime.lastError);
+          return;
+        }
+        
+        if (response && response.automacaoAtiva !== undefined) {
+          atualizarInterface(response.automacaoAtiva);
+        }
+      });
+    }
+  });
+}
+
+// Carrega as configurações salvas
+function carregarConfiguracoes() {
+  chrome.storage.local.get('configAutomacao', (result) => {
+    if (result.configAutomacao) {
+      delayMinimoInput.value = result.configAutomacao.delayMinimo || 800;
+      delayMaximoInput.value = result.configAutomacao.delayMaximo || 2000;
+      verificarSucessoUploadCheckbox.checked = 
+        result.configAutomacao.verificarSucessoUpload !== undefined ? 
+        result.configAutomacao.verificarSucessoUpload : true;
+    }
+  });
+}
+
+// Inicia a automação na aba atual
+// Atualiza a lista de arquivos preparados na interface
+function atualizarListaArquivos() {
+  // Verifica se há algum arquivo selecionado
+  const temArquivos = arquivosSelecionados.capa || arquivosSelecionados.conteudo || arquivosSelecionados.adicionais.length > 0;
+  
+  if (!temArquivos) {
+    arquivosPreparadosEl.innerHTML = 'Nenhum arquivo selecionado';
+    return;
+  }
+  
+  // Constrói a lista de arquivos HTML
+  let html = '<div class="files-list">';
+  
+  if (arquivosSelecionados.capa) {
+    html += `<div class="file-item">Capa: ${arquivosSelecionados.capa.name} (${formatFileSize(arquivosSelecionados.capa.size)})</div>`;
+  }
+  
+  if (arquivosSelecionados.conteudo) {
+    html += `<div class="file-item">Conteúdo: ${arquivosSelecionados.conteudo.name} (${formatFileSize(arquivosSelecionados.conteudo.size)})</div>`;
+  }
+  
+  if (arquivosSelecionados.adicionais.length > 0) {
+    const totalSize = arquivosSelecionados.adicionais.reduce((acc, arquivo) => acc + arquivo.size, 0);
+    html += `<div class="file-item">Arquivos adicionais: ${arquivosSelecionados.adicionais.length} selecionados (${formatFileSize(totalSize)} total)</div>`;
+    
+    // Se forem muitos arquivos, mostra apenas os primeiros 10 e resume o resto
+    if (arquivosSelecionados.adicionais.length > 10) {
+      // Exibe os primeiros 10
+      for (let i = 0; i < 5; i++) {
+        const arquivo = arquivosSelecionados.adicionais[i];
+        html += `<div class="file-item" style="margin-left: 15px;">${arquivo.name} (${formatFileSize(arquivo.size)})</div>`;
+      }
+      
+      // Mensagem de resumo para os arquivos ocultos
+      html += `<div class="file-item-collapsed">[...] ${arquivosSelecionados.adicionais.length - 10} arquivos não exibidos</div>`;
+      
+      // Exibe os últimos 5
+      for (let i = Math.max(5, arquivosSelecionados.adicionais.length - 5); i < arquivosSelecionados.adicionais.length; i++) {
+        const arquivo = arquivosSelecionados.adicionais[i];
+        html += `<div class="file-item" style="margin-left: 15px;">${arquivo.name} (${formatFileSize(arquivo.size)})</div>`;
+      }
+      
+      // Adiciona aviso sobre upload em lote
+      if (arquivosSelecionados.adicionais.length > 50) {
+        html += `<div class="file-batch-info">Será feito upload em lotes de ${limiteArquivosInput.value} arquivos.</div>`;
+      }
+    } else {
+      // Se forem poucos arquivos, mostra todos
+      for (const arquivo of arquivosSelecionados.adicionais) {
+        html += `<div class="file-item" style="margin-left: 15px;">${arquivo.name} (${formatFileSize(arquivo.size)})</div>`;
+      }
+    }
+  }
+  
+  html += '</div>';
+  arquivosPreparadosEl.innerHTML = html;
+}
+
+// Formata o tamanho do arquivo de bytes para KB, MB, etc
+function formatFileSize(bytes) {
+  if (bytes < 1024) {
+    return bytes + ' bytes';
+  } else if (bytes < 1048576) {
+    return (bytes / 1024).toFixed(1) + ' KB';
+  } else {
+    return (bytes / 1048576).toFixed(1) + ' MB';
+  }
+}
+
+// Salva os arquivos selecionados na storage para uso posterior
+function salvarArquivosSelecionados() {
+  // Não é possível armazenar diretamente objetos File na storage
+  // Vamos converter para objetos que podem ser serializados
+  
+  const prepararArquivoParaStorage = async (file) => {
+    if (!file) return null;
+    
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        resolve({
+          name: file.name,
+          type: file.type,
+          size: file.size,
+          dataUrl: event.target.result,
+        });
+      };
+      reader.readAsDataURL(file);
+    });
+  };
+  
+  const processarArquivos = async () => {
+    const capaProcessada = await prepararArquivoParaStorage(arquivosSelecionados.capa);
+    const conteudoProcessado = await prepararArquivoParaStorage(arquivosSelecionados.conteudo);
+    
+    const adicionaisProcessados = [];
+    for (const arquivo of arquivosSelecionados.adicionais) {
+      const processed = await prepararArquivoParaStorage(arquivo);
+      adicionaisProcessados.push(processed);
+    }
+    
+    // Armazena os arquivos processados
+    chrome.storage.local.set({
+      arquivosUpload: {
+        capa: capaProcessada,
+        conteudo: conteudoProcessado,
+        adicionais: adicionaisProcessados
+      }
+    }, () => {
+      console.log('Arquivos salvos para uso na automação');
+    });
+  };
+  
+  processarArquivos();
+}
+
+// Restaura arquivos selecionados da storage
+function carregarArquivosSalvos() {
+  chrome.storage.local.get('arquivosUpload', (result) => {
+    if (result.arquivosUpload) {
+      console.log('Arquivos encontrados no armazenamento');
+      
+      // Atualiza a interface para mostrar que há arquivos salvos
+      let html = '<div class="files-list">';
+      
+      if (result.arquivosUpload.capa) {
+        html += `<div class="file-item">Capa: ${result.arquivosUpload.capa.name} (${formatFileSize(result.arquivosUpload.capa.size)})</div>`;
+      }
+      
+      if (result.arquivosUpload.conteudo) {
+        html += `<div class="file-item">Conteúdo: ${result.arquivosUpload.conteudo.name} (${formatFileSize(result.arquivosUpload.conteudo.size)})</div>`;
+      }
+      
+      if (result.arquivosUpload.adicionais && result.arquivosUpload.adicionais.length > 0) {
+        html += `<div class="file-item">Arquivos adicionais: ${result.arquivosUpload.adicionais.length} salvos</div>`;
+      }
+      
+      html += '</div>';
+      arquivosPreparadosEl.innerHTML = html;
+    }
+  });
+}
+
+function iniciarAutomacao() {
+  // Coleta as configurações da interface
+  const config = {
+    delayMinimo: parseInt(delayMinimoInput.value, 10),
+    delayMaximo: parseInt(delayMaximoInput.value, 10),
+    verificarSucessoUpload: verificarSucessoUploadCheckbox.checked,
+    modoLote: modoLoteCheckbox.checked,
+    limiteArquivos: parseInt(limiteArquivosInput.value, 10),
+    arquivos: {
+      temCapa: !!arquivosSelecionados.capa,
+      temConteudo: !!arquivosSelecionados.conteudo,
+      temAdicionais: arquivosSelecionados.adicionais.length > 0,
+      totalArquivos: (arquivosSelecionados.capa ? 1 : 0) + 
+                     (arquivosSelecionados.conteudo ? 1 : 0) + 
+                      arquivosSelecionados.adicionais.length
+    }
+  };
+  
+  // Validação básica
+  if (config.delayMinimo >= config.delayMaximo) {
+    atualizarStatus('Erro: O delay mínimo deve ser menor que o máximo');
+    return;
+  }
+  
+  // Envia a mensagem para iniciar a automação
+  chrome.runtime.sendMessage(
+    { action: 'iniciarAutomacao', config },
+    (response) => {
+      if (response && response.status === 'iniciado') {
+        atualizarInterface(true);
+        atualizarStatus('Automação iniciada');
+      } else if (response && response.status === 'erro') {
+        atualizarStatus(`Erro: ${response.mensagem}`);
+      }
+    }
+  );
+}
+
+// Para a automação na aba atual
+function pararAutomacao() {
+  chrome.runtime.sendMessage(
+    { action: 'pararAutomacao' },
+    (response) => {
+      if (response && response.status === 'parado') {
+        atualizarInterface(false);
+        atualizarStatus('Automação interrompida');
+      }
+    }
+  );
+}
+
+// Registra as interações do usuário para criar padrões de uso mais naturais
+const registrarInteracaoUsuario = () => {
+  // Atualiza o timestamp da última interação
+  ultimaInteracaoUsuario = Date.now();
+  
+  // Adiciona um pequeno atraso aleatório antes de algumas ações
+  // para simular comportamento humano pensando/decidindo
+  return new Promise(resolve => {
+    // Atraso aleatório ocasional (30% de chance)
+    if (Math.random() < 0.3) {
+      const atraso = Math.floor(Math.random() * 300) + 100;
+      setTimeout(resolve, atraso);
+    } else {
+      resolve();
+    }
+  });
+};
+
+// Versão dos handlers de evento envolvidos em simulação humana
+const iniciarAutomacaoHandler = async (e) => {
+  await registrarInteracaoUsuario();
+  iniciarAutomacao();
+};
+
+const pararAutomacaoHandler = async (e) => {
+  await registrarInteracaoUsuario();
+  pararAutomacao();
+};
+
+// Event listeners para os botões com comportamento humano
+btnIniciar.addEventListener('click', iniciarAutomacaoHandler);
+btnParar.addEventListener('click', pararAutomacaoHandler);
+
+// Listeners para rastrear movimento do mouse (ajuda a construir padrões realistas)
+document.addEventListener('mousemove', (e) => {
+  // Atualiza apenas ocasionalmente para evitar sobrecarga
+  if (Math.random() < 0.1) {
+    ultimaInteracaoUsuario = Date.now();
+  }
+});
+
+// Validação de inputs com comportamento humano
+delayMinimoInput.addEventListener('change', async () => {
+  await registrarInteracaoUsuario();
+  
+  // Adiciona uma leve variação nos valores mínimos permitidos
+  // para evitar padrões exatos que sistemas anti-bot procuram
+  const minPermitido = Math.floor(Math.random() * 50) + 180; // entre 180-230
+  
+  if (parseInt(delayMinimoInput.value, 10) < minPermitido) {
+    delayMinimoInput.value = minPermitido;
+  }
+});
+
+delayMaximoInput.addEventListener('change', async () => {
+  await registrarInteracaoUsuario();
+  
+  const minAtual = parseInt(delayMinimoInput.value, 10);
+  const diferencaMinima = Math.floor(Math.random() * 100) + 450; // entre 450-550
+  
+  if (parseInt(delayMaximoInput.value, 10) < minAtual + diferencaMinima) {
+    delayMaximoInput.value = minAtual + diferencaMinima;
+  }
+});
+
+// Listener para atualizações de status da automação
+chrome.runtime.onMessage.addListener((message) => {
+  if (message.action === 'statusAtualizado') {
+    atualizarStatus(message.status);
+  }
+});
+
+// Event listeners para os campos de arquivo
+arquivoCapaInput.addEventListener('change', async (e) => {
+  await registrarInteracaoUsuario();
+  
+  if (e.target.files.length > 0) {
+    arquivosSelecionados.capa = e.target.files[0];
+    console.log('Arquivo de capa selecionado:', arquivosSelecionados.capa.name);
+  } else {
+    arquivosSelecionados.capa = null;
+  }
+  
+  atualizarListaArquivos();
+  salvarArquivosSelecionados();
+});
+
+arquivoConteudoInput.addEventListener('change', async (e) => {
+  await registrarInteracaoUsuario();
+  
+  if (e.target.files.length > 0) {
+    arquivosSelecionados.conteudo = e.target.files[0];
+    console.log('Arquivo de conteúdo selecionado:', arquivosSelecionados.conteudo.name);
+  } else {
+    arquivosSelecionados.conteudo = null;
+  }
+  
+  atualizarListaArquivos();
+  salvarArquivosSelecionados();
+});
+
+arquivosAdicionaisInput.addEventListener('change', async (e) => {
+  await registrarInteracaoUsuario();
+  
+  if (e.target.files.length > 0) {
+    const arquivos = Array.from(e.target.files);
+    
+    // Verifica se não excede o limite máximo suportado (500)
+    if (arquivos.length > 500) {
+      alert('Por favor, selecione no máximo 500 arquivos por vez. Apenas os primeiros 500 serão processados.');
+      arquivosSelecionados.adicionais = arquivos.slice(0, 500);
+    } else {
+      arquivosSelecionados.adicionais = arquivos;
+    }
+    
+    console.log('Arquivos adicionais selecionados:', arquivosSelecionados.adicionais.length);
+    
+    // Atualiza o valor do campo de limite com base no número de arquivos
+    // (para garantir que seja pelo menos igual ao número de arquivos)
+    if (arquivosSelecionados.adicionais.length > parseInt(limiteArquivosInput.value, 10)) {
+      // Calcula um valor adequado: 50 ou mais que o número de arquivos
+      const novoLimite = Math.max(50, Math.ceil(arquivosSelecionados.adicionais.length / 10) * 10);
+      limiteArquivosInput.value = Math.min(novoLimite, 500); // Não exceder 500
+    }
+  } else {
+    arquivosSelecionados.adicionais = [];
+  }
+  
+  atualizarListaArquivos();
+  salvarArquivosSelecionados();
+});
+
+// Event listener para o checkbox de modo lote
+modoLoteCheckbox.addEventListener('change', async (e) => {
+  await registrarInteracaoUsuario();
+  
+  // Se o modo de lote for desativado mas houver muitos arquivos, alerta o usuário
+  if (!e.target.checked && arquivosSelecionados.adicionais.length > 20) {
+    alert(`Atenção: Você tem ${arquivosSelecionados.adicionais.length} arquivos selecionados. Recomendamos o modo de lote para grandes quantidades de arquivos.`);
+  }
+});
+
+// Inicialização
+document.addEventListener('DOMContentLoaded', () => {
+  carregarConfiguracoes();
+  verificarEstadoAutomacao();
+  carregarArquivosSalvos();
+  
+  // Verifica se estamos na Hotmart
+  chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+    if (tabs.length > 0) {
+      const tab = tabs[0];
+      if (!tab.url.includes('hotmart.com')) {
+        atualizarStatus('Por favor, acesse a plataforma Hotmart para usar a extensão');
+        btnIniciar.disabled = true;
+      }
+    }
+  });
+  
+  // Adiciona comportamentos humanos aleatórios para evitar detecção
+  setTimeout(() => {
+    const tempoAleatorio = Math.floor(Math.random() * 2000) + 500;
+    console.log(`Interface totalmente inicializada após ${tempoAleatorio}ms`);
+  }, Math.floor(Math.random() * 500) + 100);
+});
+
+
+== background.js ==
+// Background script para manipular eventos globais da extensão
+let currentTabId = null;
+
+// Rastreamento de padrões para simulação humana
+let ultimaAcao = {
+  tempo: Date.now() - Math.floor(Math.random() * 3600000), // Tempo aleatório inicial
+  tipo: 'inicialização'
+};
+
+// Adiciona variação no comportamento para ser mais realista
+const simularDelayHumano = () => {
+  // Maior variabilidade no delay após a instalação/atualização
+  if (ultimaAcao.tipo === 'inicialização') {
+    return Math.floor(Math.random() * 1000) + 200;
+  }
+  
+  // Delay médio entre ações
+  return Math.floor(Math.random() * 300) + 100;
+};
+
+// Registra ações realizadas para criar padrões mais naturalistas
+const registrarAcao = (tipo) => {
+  ultimaAcao = {
+    tempo: Date.now(),
+    tipo
+  };
+};
+
+// Escuta mensagens dos scripts de conteúdo e do popup com padrões humanos
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  // Pequeno delay artificial para parecer mais natural
+  const timeoutId = setTimeout(() => {
+  if (message.action === 'iniciarAutomacao') {
+    registrarAcao('iniciar_automacao');
+    const { config } = message;
+    
+    // Adiciona variação no comportamento para parecer mais natural
+    const variacaoConfig = {
+      ...config,
+      // Pequena variação nos valores dos delays para evitar padrões exatos
+      delayMinimo: parseInt(config.delayMinimo, 10) + Math.floor(Math.random() * 20) - 10,
+      delayMaximo: parseInt(config.delayMaximo, 10) + Math.floor(Math.random() * 30) - 15
+    };
+    
+    // Armazena as configurações no storage da extensão com timing variável
+    const inicioOperacao = Date.now();
+    chrome.storage.local.set({ configAutomacao: variacaoConfig }, () => {
+      // Simula o tempo que um humano levaria para processar esta ação
+      const tempoOperacao = Date.now() - inicioOperacao;
+      const delayEsperado = Math.max(0, Math.floor(Math.random() * 100) + 20 - tempoOperacao);
+      
+      setTimeout(() => {
+        console.log('Configurações de automação salvas');
+      }, delayEsperado);
+    });
+    
+    // Injeta o script de automação na aba ativa da Hotmart com padrões realistas
+    setTimeout(() => {
+      chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+        if (tabs.length > 0) {
+          currentTabId = tabs[0].id;
+          
+          // Verifica se estamos em um domínio da Hotmart
+          if (tabs[0].url.includes('hotmart.com')) {
+            // Pequeno delay variável antes de enviar o comando
+            setTimeout(() => {
+              chrome.tabs.sendMessage(currentTabId, { 
+                action: 'executarAutomacao', 
+                config: variacaoConfig 
+              });
+              
+              // Delay variável antes de responder
+              setTimeout(() => {
+                sendResponse({ status: 'iniciado' });
+              }, Math.floor(Math.random() * 100) + 30);
+            }, Math.floor(Math.random() * 150) + 50);
+          } else {
+            sendResponse({ 
+              status: 'erro', 
+              mensagem: 'Você precisa estar na plataforma Hotmart para iniciar a automação' 
+            });
+          }
+        }
+      });
+    }, simularDelayHumano());
+    
+    return true; // Indica que a resposta será assíncrona
+  }
+  
+  if (message.action === 'pararAutomacao') {
+    registrarAcao('parar_automacao');
+    
+    if (currentTabId) {
+      // Adiciona um delay variável para simular comportamento humano
+      setTimeout(() => {
+        chrome.tabs.sendMessage(currentTabId, { action: 'pararAutomacao' });
+        
+        // Responde após um pequeno atraso
+        setTimeout(() => {
+          sendResponse({ status: 'parado' });
+        }, Math.floor(Math.random() * 80) + 20);
+      }, simularDelayHumano());
+    }
+    return true;
+  }
+  
+  if (message.action === 'atualizarStatus') {
+    registrarAcao('atualizar_status');
+    
+    // Repassa o status para o popup após um pequeno delay variável
+    setTimeout(() => {
+      chrome.runtime.sendMessage({ 
+        action: 'statusAtualizado', 
+        status: message.status 
+      });
+    }, Math.floor(Math.random() * 70) + 30);
+    
+    return true;
+  }
+  }, simularDelayHumano());
+});
+
+// Escuta quando uma aba é alterada para atualizar o currentTabId
+chrome.tabs.onActivated.addListener((activeInfo) => {
+  currentTabId = activeInfo.tabId;
+});
+
+// Quando a extensão é instalada ou atualizada
+chrome.runtime.onInstalled.addListener(() => {
+  console.log('Extensão de automação Hotmart instalada/atualizada');
+  
+  // Inicializa as configurações padrão
+  chrome.storage.local.set({
+    configAutomacao: {
+      delayMinimo: 800,
+      delayMaximo: 2000,
+      verificarSucessoUpload: true
+    }
+  });
+});
+
+
+== content.js ==
+// Script de conteúdo para execução na página da Hotmart
+// Este script é injetado em todas as páginas da Hotmart e gerencia a automação
+
+// Carrega os módulos de utilidades
+let shadowDomUtils = null;
+let humanSimulation = null;
+let hotmartNavigator = null;
+
+// Estado da automação
+let automacaoAtiva = false;
+let configAutomacao = {
+  delayMinimo: 800,
+  delayMaximo: 2000,
+  verificarSucessoUpload: true
+};
+
+// Carrega os módulos da extensão
+async function carregarModulos() {
+  // Carrega os módulos dinâmicamente
+  shadowDomUtils = await import(chrome.runtime.getURL('utils/shadow-dom.js'));
+  humanSimulation = await import(chrome.runtime.getURL('utils/human-simulation.js'));
+  hotmartNavigator = await import(chrome.runtime.getURL('utils/hotmart-navigator.js'));
+  
+  console.log('Módulos de automação carregados');
+}
+
+// Inicia o processo de automação
+async function iniciarAutomacao(config) {
+  if (automacaoAtiva) {
+    console.log('Automação já está em execução');
+    return;
+  }
+  
+  try {
+    // Atualiza configurações
+    configAutomacao = { ...configAutomacao, ...config };
+    
+    // Inicializa os módulos se ainda não foram carregados
+    if (!shadowDomUtils) {
+      await carregarModulos();
+    }
+    
+    // Inicia a automação
+    automacaoAtiva = true;
+    atualizarStatus('Iniciando automação...');
+    
+    // Configura as utilidades com as configurações atuais
+    humanSimulation.default.configurar(configAutomacao);
+    hotmartNavigator.default.configurar(configAutomacao, shadowDomUtils.default, humanSimulation.default);
+    
+    // Determina em que página da Hotmart estamos
+    const paginaAtual = detectarPaginaHotmart();
+    
+    // Inicia o fluxo de automação de acordo com a página
+    if (paginaAtual === 'login') {
+      atualizarStatus('Por favor, faça login na Hotmart antes de iniciar a automação');
+      automacaoAtiva = false;
+      return;
+    }
+    
+    // Executa o fluxo principal
+    await executarFluxoAutomacao(paginaAtual);
+    
+  } catch (erro) {
+    console.error('Erro ao iniciar automação:', erro);
+    atualizarStatus(`Erro: ${erro.message}`);
+    automacaoAtiva = false;
+  }
+}
+
+// Detecta em qual página da Hotmart estamos
+function detectarPaginaHotmart() {
+  const url = window.location.href;
+  
+  if (url.includes('hotmart.com/login')) {
+    return 'login';
+  } else if (url.includes('hotmart.com/club/products')) {
+    return 'listagemProdutos';
+  } else if (url.includes('hotmart.com/club/products/') && url.includes('/edit')) {
+    return 'edicaoProduto';
+  } else if (url.includes('hotmart.com/club/products/') && url.includes('/pricing')) {
+    return 'precificacao';
+  } else if (url.includes('hotmart.com/club/products/create')) {
+    return 'criacaoProduto';
+  } else {
+    return 'outra';
+  }
+}
+
+// Executa o fluxo de automação com base na página atual
+async function executarFluxoAutomacao(paginaAtual) {
+  try {
+    atualizarStatus(`Executando automação na página: ${paginaAtual}`);
+    
+    switch (paginaAtual) {
+      case 'listagemProdutos':
+        await hotmartNavigator.default.navegarParaCriacaoProduto();
+        break;
+        
+      case 'criacaoProduto':
+        await hotmartNavigator.default.preencherFormularioCriacaoProduto();
+        break;
+        
+      case 'edicaoProduto':
+        await hotmartNavigator.default.realizarUploadArquivos();
+        break;
+        
+      case 'precificacao':
+        await hotmartNavigator.default.manipularPrecificacao();
+        break;
+        
+      default:
+        atualizarStatus('Navegue até a página de produtos da Hotmart para iniciar');
+        automacaoAtiva = false;
+    }
+    
+    if (automacaoAtiva) {
+      atualizarStatus('Automação concluída com sucesso!');
+      automacaoAtiva = false;
+    }
+    
+  } catch (erro) {
+    console.error('Erro durante a execução da automação:', erro);
+    atualizarStatus(`Erro: ${erro.message}`);
+    automacaoAtiva = false;
+  }
+}
+
+// Para o processo de automação
+function pararAutomacao() {
+  automacaoAtiva = false;
+  atualizarStatus('Automação interrompida pelo usuário');
+}
+
+// Atualiza o status da automação e notifica o background script
+function atualizarStatus(mensagem) {
+  console.log(`Status: ${mensagem}`);
+  
+  // Envia o status para o background script
+  chrome.runtime.sendMessage({
+    action: 'atualizarStatus',
+    status: mensagem
+  });
+}
+
+// Listener para comandos do background script
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message.action === 'executarAutomacao') {
+    iniciarAutomacao(message.config);
+    sendResponse({ status: 'iniciado' });
+    return true;
+  }
+  
+  if (message.action === 'pararAutomacao') {
+    pararAutomacao();
+    sendResponse({ status: 'parado' });
+    return true;
+  }
+  
+  if (message.action === 'verificarEstado') {
+    sendResponse({
+      automacaoAtiva,
+      paginaAtual: detectarPaginaHotmart()
+    });
+    return true;
+  }
+});
+
+// Carrega as configurações quando o script é iniciado
+chrome.storage.local.get('configAutomacao', (result) => {
+  if (result.configAutomacao) {
+    configAutomacao = result.configAutomacao;
+  }
+});
+
+// Pré-carrega os módulos para uso futuro
+carregarModulos().catch(console.error);
+
+console.log('Script de automação Hotmart inicializado');
+
+
+== utils/human-simulation.js ==
+/**
+ * Utilitário para simulação de interações humanas
+ * Fornece funções para simular cliques, movimentos do mouse e digitação
+ * com comportamento natural para evitar detecção de automação
+ */
+
+const HumanSimulation = {
+  // Configurações padrão
+  config: {
+    delayMinimo: 800,
+    delayMaximo: 2000,
+    movimentoMouseAtivado: true,
+    digitacaoNatural: true
+  },
+  
+  /**
+   * Configura as opções de simulação
+   * @param {Object} options - Opções de configuração
+   */
+  configurar(options) {
+    this.config = { ...this.config, ...options };
+  },
+  
+  /**
+   * Gera um delay aleatório para simular comportamento humano
+   * @param {number} min - Tempo mínimo em ms (opcional)
+   * @param {number} max - Tempo máximo em ms (opcional)
+   * @returns {Promise} - Promessa que resolve após o delay
+   */
+  async delay(min = null, max = null) {
+    const minDelay = min || this.config.delayMinimo;
+    const maxDelay = max || this.config.delayMaximo;
+    
+    // Adiciona uma variação não-linear para parecer mais humano
+    // Ocasionalmente adiciona pausas mais longas (como um humano pensando)
+    let delay;
+    
+    if (Math.random() < 0.15) {
+      // Pausa longa ocasional (15% de chance)
+      delay = Math.floor(Math.random() * (maxDelay * 1.5 - maxDelay + 1)) + maxDelay;
+    } else {
+      // Distribuição não uniforme para parecer mais natural
+      const randomBase = Math.random();
+      const skewedRandom = Math.pow(randomBase, 0.7); // Faz com que delays curtos sejam mais frequentes
+      delay = Math.floor(skewedRandom * (maxDelay - minDelay + 1)) + minDelay;
+    }
+    
+    return new Promise(resolve => setTimeout(resolve, delay));
+  },
+  
+  /**
+   * Simula movimento de mouse natural para um elemento
+   * @param {Element} elemento - Elemento alvo para o movimento
+   * @returns {Promise} - Promessa que resolve após a simulação
+   */
+  async moverMousePara(elemento) {
+    if (!elemento || !this.config.movimentoMouseAtivado) return;
+    
+    // Obtém a posição do elemento
+    const rect = elemento.getBoundingClientRect();
+    
+    // Não clica exatamente no centro, mas em uma posição aleatória dentro do elemento
+    // Os sistemas anti-bot detectam cliques exatos no centro como suspeitos
+    const offsetX = (Math.random() * 0.6 + 0.2) * rect.width; // Entre 20% e 80% da largura
+    const offsetY = (Math.random() * 0.6 + 0.2) * rect.height; // Entre 20% e 80% da altura
+    
+    const targetX = rect.left + offsetX + window.scrollX;
+    const targetY = rect.top + offsetY + window.scrollY;
+    
+    // Obtém a posição atual do mouse, ou uma posição aleatória na tela
+    // para simular que o mouse vem de um lugar aleatório
+    const randomStartPosition = Math.random() < 0.7; // 70% de chance de usar posição aleatória
+    
+    let startX, startY;
+    if (randomStartPosition) {
+      // Posição aleatória nas bordas da tela, mais realista que vir do centro
+      if (Math.random() < 0.5) {
+        // Começa de um dos lados
+        startX = Math.random() < 0.5 ? 10 : window.innerWidth - 10;
+        startY = Math.random() * window.innerHeight;
+      } else {
+        // Começa de cima ou de baixo
+        startX = Math.random() * window.innerWidth;
+        startY = Math.random() < 0.5 ? 10 : window.innerHeight - 10;
+      }
+    } else {
+      // Centro da tela (menos frequente)
+      startX = window.innerWidth / 2;
+      startY = window.innerHeight / 2;
+    }
+    
+    // Calcula a distância total para determinar o número de passos
+    const distancia = Math.sqrt(Math.pow(targetX - startX, 2) + Math.pow(targetY - startY, 2));
+    // Número de passos proporcional à distância (movimento mais natural)
+    const passos = Math.floor(5 + distancia / 30);
+    
+    // Cria pontos de controle para uma curva de Bezier mais natural
+    // Humanos raramente movem o mouse em linha reta
+    const controlX1 = startX + (targetX - startX) * (Math.random() * 0.3 + 0.1);
+    const controlY1 = startY + (targetY - startY) * (Math.random() * 0.3 + 0.6);
+    const controlX2 = startX + (targetX - startX) * (Math.random() * 0.3 + 0.6);
+    const controlY2 = startY + (targetY - startY) * (Math.random() * 0.3 + 0.1);
+    
+    // Simula o movimento do mouse em passos
+    for (let i = 0; i <= passos; i++) {
+      // Progresso atual (0 a 1)
+      const t = i / passos;
+      
+      // Aplica a curva de Bezier cúbica para trajetória natural
+      const bezierX = this.bezierCubico(t, startX, controlX1, controlX2, targetX);
+      const bezierY = this.bezierCubico(t, startY, controlY1, controlY2, targetY);
+      
+      // Adiciona um pequeno desvio aleatório que diminui conforme se aproxima do alvo
+      // (simulando a maior precisão quando se aproxima do objetivo)
+      const desvioFator = 1 - Math.min(1, t * 2); // Diminui gradualmente até zero
+      const desvioMax = 4 * desvioFator;
+      const desvioX = (Math.random() * 2 - 1) * desvioMax;
+      const desvioY = (Math.random() * 2 - 1) * desvioMax;
+      
+      const novoX = bezierX + desvioX;
+      const novoY = bezierY + desvioY;
+      
+      // Cria e dispara o evento de movimento do mouse
+      const mouseEvent = new MouseEvent('mousemove', {
+        clientX: novoX,
+        clientY: novoY,
+        bubbles: true,
+        cancelable: true,
+        view: window,
+        movementX: novoX - (i > 0 ? bezierX : startX), // Adiciona movementX/Y para maior realismo
+        movementY: novoY - (i > 0 ? bezierY : startY)
+      });
+      
+      // Dispara o evento no elemento correto
+      const elementoAlvo = document.elementFromPoint(novoX, novoY) || document.body;
+      elementoAlvo.dispatchEvent(mouseEvent);
+      
+      // Ocasionalmente adiciona uma pequena pausa (como se o usuário estivesse hesitando)
+      if (Math.random() < 0.1) {
+        await this.delay(30, 150);
+      } else {
+        // Velocidade variável do movimento (mais lento no início e no final)
+        const velocidade = this.mouseCurveSpeed(t);
+        await this.delay(velocidade * 8, velocidade * 15);
+      }
+    }
+    
+    // Pausa natural antes de ações após mover o mouse
+    await this.delay(50, 200);
+  },
+  
+  /**
+   * Calcula a velocidade do mouse baseada na curva de aceleração/desaceleração
+   * @param {number} t - Progresso (0-1)
+   * @returns {number} - Fator de velocidade (menor = mais rápido)
+   */
+  mouseCurveSpeed(t) {
+    // Mais lento no início e no final do movimento (aceleração e desaceleração)
+    return 10 + 15 * (1 - Math.sin(t * Math.PI));
+  },
+  
+  /**
+   * Implementação de curva Bezier cúbica para movimento de mouse
+   * @param {number} t - Valor do tempo (0-1)
+   * @param {number} p0 - Ponto inicial
+   * @param {number} p1 - Primeiro ponto de controle
+   * @param {number} p2 - Segundo ponto de controle
+   * @param {number} p3 - Ponto final
+   * @returns {number} - Valor interpolado
+   */
+  bezierCubico(t, p0, p1, p2, p3) {
+    const cX = 3 * (p1 - p0);
+    const bX = 3 * (p2 - p1) - cX;
+    const aX = p3 - p0 - cX - bX;
+    
+    return aX * Math.pow(t, 3) + bX * Math.pow(t, 2) + cX * t + p0;
+  },
+  
+  /**
+   * Função de suavização para movimento natural
+   * @param {number} t - Valor de progresso (0-1)
+   * @returns {number} - Valor suavizado
+   */
+  easeInOutQuad(t) {
+    return t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+  },
+  
+  /**
+   * Simula um clique humano em um elemento
+   * @param {Element} elemento - Elemento para clicar
+   * @param {boolean} ignorarMovimento - Se deve ignorar o movimento do mouse
+   * @returns {Promise} - Promessa que resolve após o clique
+   */
+  async clicar(elemento, ignorarMovimento = false) {
+    if (!elemento) throw new Error('Elemento não encontrado para clicar');
+    
+    // Rola a página para o elemento, se necessário
+    this.rolarParaElemento(elemento);
+    await this.delay(300, 700);
+    
+    // Simula movimento do mouse para o elemento
+    if (!ignorarMovimento && this.config.movimentoMouseAtivado) {
+      await this.moverMousePara(elemento);
+    }
+    
+    // Obtém a posição do elemento
+    const rect = elemento.getBoundingClientRect();
+    
+    // Não clica exatamente no centro, mas em uma posição aleatória dentro do elemento
+    // Os sistemas anti-bot detectam cliques exatos no centro como suspeitos
+    const offsetX = (Math.random() * 0.6 + 0.2) * rect.width; // Entre 20% e 80% da largura
+    const offsetY = (Math.random() * 0.6 + 0.2) * rect.height; // Entre 20% e 80% da altura
+    
+    const x = rect.left + offsetX;
+    const y = rect.top + offsetY;
+    
+    // Sequência natural de eventos do mouse com tempos variáveis entre eles
+    // Um humano real não gera eventos mousedown/mouseup/click instantaneamente
+    
+    // 1. Evento mouseenter (opcional, acontece quando o mouse entra no elemento)
+    if (Math.random() < 0.8) { // 80% de chance de disparar
+      const mouseEnterEvent = new MouseEvent('mouseenter', {
+        view: window,
+        bubbles: true,
+        cancelable: true,
+        clientX: x,
+        clientY: y
+      });
+      elemento.dispatchEvent(mouseEnterEvent);
+      
+      // Pequena pausa antes do hover
+      await this.delay(10, 30);
+    }
+    
+    // 2. Evento mouseover (hover)
+    const mouseOverEvent = new MouseEvent('mouseover', {
+      view: window,
+      bubbles: true,
+      cancelable: true,
+      clientX: x,
+      clientY: y
+    });
+    elemento.dispatchEvent(mouseOverEvent);
+    
+    // Pequeno delay antes de pressionar o botão
+    await this.delay(20, 100);
+    
+    // 3. Evento mousedown (pressionar o botão do mouse)
+    const mouseDownEvent = new MouseEvent('mousedown', {
+      view: window,
+      bubbles: true,
+      cancelable: true,
+      clientX: x,
+      clientY: y,
+      button: 0, // Botão esquerdo
+      buttons: 1
+    });
+    elemento.dispatchEvent(mouseDownEvent);
+    
+    // Tempo variável mantendo o botão pressionado (humanos não clicam instantaneamente)
+    // Cliques muito rápidos são suspeitos para sistemas anti-bot
+    const tempoClique = Math.random() < 0.8
+      ? Math.floor(Math.random() * 120) + 30 // Clique normal (80% de chance)
+      : Math.floor(Math.random() * 350) + 150; // Clique mais demorado (20% de chance)
+    
+    await this.delay(tempoClique, tempoClique + 20);
+    
+    // 4. Evento mouseup (soltar o botão do mouse)
+    const mouseUpEvent = new MouseEvent('mouseup', {
+      view: window,
+      bubbles: true,
+      cancelable: true,
+      clientX: x,
+      clientY: y,
+      button: 0,
+      buttons: 0
+    });
+    elemento.dispatchEvent(mouseUpEvent);
+    
+    // Pequeno delay entre soltar o botão e o evento de clique
+    await this.delay(5, 15);
+    
+    // 5. Evento click (o clique em si)
+    const clickEvent = new MouseEvent('click', {
+      view: window,
+      bubbles: true,
+      cancelable: true,
+      clientX: x,
+      clientY: y,
+      button: 0,
+      buttons: 0
+    });
+    elemento.dispatchEvent(clickEvent);
+    
+    // Ocasionalmente adiciona um pequeno movimento do mouse após o clique
+    // (comportamento comum em humanos)
+    if (Math.random() < 0.3) {
+      await this.delay(50, 150);
+      
+      // Pequeno movimento aleatório após o clique
+      const postClickX = x + (Math.random() * 20 - 10);
+      const postClickY = y + (Math.random() * 20 - 10);
+      
+      const postClickEvent = new MouseEvent('mousemove', {
+        view: window,
+        bubbles: true,
+        cancelable: true,
+        clientX: postClickX,
+        clientY: postClickY
+      });
+      
+      document.elementFromPoint(postClickX, postClickY)?.dispatchEvent(postClickEvent);
+    }
+    
+    // Aguarda um tempo para simular reação humana após o clique
+    // Tempo de reação variável dependendo do contexto
+    // - Cliques em botões de navegação geralmente têm um tempo de espera maior
+    const aparenciaBotao = elemento.tagName === 'BUTTON' || 
+                          elemento.tagName === 'A' ||
+                          elemento.className.includes('btn') ||
+                          elemento.className.includes('button');
+                          
+    if (aparenciaBotao) {
+      // Espera um pouco mais após clicar em botões, simulando a expectativa de mudança de página
+      await this.delay(500, 1500);
+    } else {
+      // Tempo padrão para outros elementos
+      await this.delay(200, 600);
+    }
+    
+    return true;
+  },
+  
+  /**
+   * Rola a página para exibir um elemento
+   * @param {Element} elemento - Elemento para exibir
+   */
+  rolarParaElemento(elemento) {
+    if (!elemento) return;
+    
+    const rect = elemento.getBoundingClientRect();
+    const viewHeight = window.innerHeight;
+    
+    // Verifica se o elemento está fora da área visível
+    if (rect.top < 0 || rect.bottom > viewHeight) {
+      // Calcula a posição de rolagem ideal (deixa algum espaço acima)
+      const scrollY = rect.top + window.scrollY - 100;
+      
+      // Rola suavemente para a posição
+      window.scrollTo({
+        top: scrollY,
+        behavior: 'smooth'
+      });
+    }
+  },
+  
+  /**
+   * Simula digitação humana em um campo de entrada
+   * @param {Element} elemento - Campo de entrada para digitar
+   * @param {string} texto - Texto a ser digitado
+   * @returns {Promise} - Promessa que resolve após a digitação
+   */
+  async digitar(elemento, texto) {
+    if (!elemento) throw new Error('Elemento não encontrado para digitação');
+    
+    // Rola a página para o elemento, se necessário
+    this.rolarParaElemento(elemento);
+    await this.delay(300, 700);
+    
+    // Simula movimento do mouse e clique para focar o elemento
+    if (this.config.movimentoMouseAtivado) {
+      await this.moverMousePara(elemento);
+    }
+    await this.clicar(elemento, true);
+    
+    // Limpa o campo se já tiver conteúdo (como um humano faria)
+    if (elemento.value) {
+      // Uma pessoa real poderia usar Ctrl+A e depois digitar (sobrescrever),
+      // ou deletar o conteúdo caractere por caractere, ou usar backspace
+      
+      // Escolhemos uma abordagem aleatória
+      const abordagemLimpeza = Math.random();
+      
+      if (abordagemLimpeza < 0.4) {
+        // Abordagem 1: Seleciona tudo com Ctrl+A e substitui
+        elemento.select();
+        await this.delay(100, 300);
+        
+        // Eventos para simular Ctrl+A
+        elemento.dispatchEvent(new KeyboardEvent('keydown', {
+          key: 'a',
+          code: 'KeyA',
+          ctrlKey: true,
+          bubbles: true,
+          cancelable: true
+        }));
+        
+        elemento.dispatchEvent(new KeyboardEvent('keyup', {
+          key: 'a',
+          code: 'KeyA',
+          ctrlKey: true,
+          bubbles: true,
+          cancelable: true
+        }));
+        
+        await this.delay(50, 150);
+      } else if (abordagemLimpeza < 0.7) {
+        // Abordagem 2: Usa a tecla Delete para limpar o campo
+        const valorAtual = elemento.value;
+        elemento.focus();
+        
+        // Simula pressionar End para ir ao final e depois deletar para trás
+        elemento.dispatchEvent(new KeyboardEvent('keydown', {
+          key: 'End',
+          code: 'End',
+          bubbles: true,
+          cancelable: true
+        }));
+        
+        elemento.dispatchEvent(new KeyboardEvent('keyup', {
+          key: 'End',
+          code: 'End',
+          bubbles: true,
+          cancelable: true
+        }));
+        
+        await this.delay(50, 150);
+        
+        // Backspace para cada caractere
+        for (let i = 0; i < valorAtual.length; i++) {
+          elemento.dispatchEvent(new KeyboardEvent('keydown', {
+            key: 'Backspace',
+            code: 'Backspace',
+            bubbles: true,
+            cancelable: true
+          }));
+          
+          elemento.value = valorAtual.substring(0, valorAtual.length - i - 1);
+          elemento.dispatchEvent(new Event('input', { bubbles: true }));
+          
+          elemento.dispatchEvent(new KeyboardEvent('keyup', {
+            key: 'Backspace',
+            code: 'Backspace',
+            bubbles: true,
+            cancelable: true
+          }));
+          
+          await this.delay(30, 80);
+        }
+      } else {
+        // Abordagem 3: Simplesmente limpa o valor diretamente
+        // (como se tivesse clicado no X do campo ou usado algum atalho)
+        elemento.value = '';
+        elemento.dispatchEvent(new Event('input', { bubbles: true }));
+        await this.delay(50, 200);
+      }
+    }
+    
+    // Se a digitação natural não estiver ativada, define o valor diretamente
+    if (!this.config.digitacaoNatural) {
+      elemento.value = texto;
+      elemento.dispatchEvent(new Event('input', { bubbles: true }));
+      elemento.dispatchEvent(new Event('change', { bubbles: true }));
+      await this.delay();
+      return;
+    }
+    
+    // Análise de padrões de digitação para grupos de teclas próximas no teclado
+    // Isso imita melhor o comportamento humano real, com velocidades diferentes para diferentes combinações de teclas
+    
+    // Simula digitação caractere por caractere
+    for (let i = 0; i < texto.length; i++) {
+      const caracterAtual = texto[i];
+      const proximoCaractere = i < texto.length - 1 ? texto[i + 1] : null;
+      
+      // Adiciona o caractere ao valor atual
+      elemento.value += caracterAtual;
+      
+      // Dispara eventos para atualizar a interface
+      elemento.dispatchEvent(new Event('input', { bubbles: true }));
+      
+      // Simula o evento de digitação da tecla específica
+      this.simularEventoTecla(elemento, caracterAtual);
+      
+      // Calcula o atraso baseado em vários fatores humanos
+      let velocidadeBase;
+      
+      // Fatores que afetam a velocidade de digitação:
+      
+      // 1. Pausa maior quando encontra pontuação (humanos naturalmente pausam após pontos, vírgulas)
+      if ('.,:;!?'.includes(caracterAtual)) {
+        velocidadeBase = Math.floor(Math.random() * 200) + 100;
+      } 
+      // 2. Pausa para pensar ocasionalmente (hesitação humana)
+      else if (Math.random() < 0.05) {
+        velocidadeBase = Math.floor(Math.random() * 400) + 300;
+      }
+      // 3. Teclas próximas no teclado são digitadas mais rapidamente em sequência
+      else if (proximoCaractere && this.teclasProximas(caracterAtual, proximoCaractere)) {
+        velocidadeBase = Math.floor(Math.random() * 70) + 30;
+      }
+      // 4. Velocidade padrão com ligeira variação
+      else {
+        velocidadeBase = Math.floor(Math.random() * 100) + 60;
+      }
+      
+      // Adiciona variações aleatórias para parecer mais natural
+      const variacao = Math.floor(Math.random() * 40) - 20; // ±20ms
+      await this.delay(Math.max(20, velocidadeBase + variacao), velocidadeBase + variacao + 30);
+      
+      // Simula erro de digitação ocasional e correção (comportamento muito humano)
+      if (Math.random() < 0.03) { // 3% de chance de erro
+        // Adiciona um caractere errado aleatório
+        const caracteresProximos = this.obterCaracteresProximosTeclado(caracterAtual);
+        if (caracteresProximos.length > 0) {
+          const erroCaractere = caracteresProximos[Math.floor(Math.random() * caracteresProximos.length)];
+          
+          // Simula digitação do erro
+          elemento.value += erroCaractere;
+          elemento.dispatchEvent(new Event('input', { bubbles: true }));
+          this.simularEventoTecla(elemento, erroCaractere);
+          
+          await this.delay(100, 300);
+          
+          // Simula a correção (backspace)
+          this.simularEventoTecla(elemento, 'Backspace');
+          elemento.value = elemento.value.slice(0, -1);
+          elemento.dispatchEvent(new Event('input', { bubbles: true }));
+          
+          await this.delay(100, 250);
+          
+          // Digita o caractere correto
+          elemento.value += caracterAtual;
+          elemento.dispatchEvent(new Event('input', { bubbles: true }));
+          this.simularEventoTecla(elemento, caracterAtual);
+          
+          await this.delay(60, 150);
+        }
+      }
+    }
+    
+    // Dispara o evento change após a digitação completa
+    elemento.dispatchEvent(new Event('change', { bubbles: true }));
+    
+    // Aguarda um tempo após a digitação
+    await this.delay(200, 500);
+  },
+  
+  /**
+   * Simula eventos de teclado para uma tecla específica
+   * @param {Element} elemento - Elemento de destino
+   * @param {string} tecla - Tecla a ser simulada
+   */
+  simularEventoTecla(elemento, tecla) {
+    // KeyboardEvent para keydown
+    elemento.dispatchEvent(new KeyboardEvent('keydown', {
+      key: tecla,
+      code: this.obterCodeDeTecla(tecla),
+      bubbles: true,
+      cancelable: true
+    }));
+    
+    // KeyboardEvent para keypress (deprecado mas ainda usado)
+    elemento.dispatchEvent(new KeyboardEvent('keypress', {
+      key: tecla,
+      code: this.obterCodeDeTecla(tecla),
+      bubbles: true,
+      cancelable: true
+    }));
+    
+    // KeyboardEvent para keyup
+    elemento.dispatchEvent(new KeyboardEvent('keyup', {
+      key: tecla,
+      code: this.obterCodeDeTecla(tecla),
+      bubbles: true,
+      cancelable: true
+    }));
+  },
+  
+  /**
+   * Obtém o código da tecla para eventos de teclado
+   * @param {string} tecla - Tecla para obter o código
+   * @returns {string} - Código da tecla
+   */
+  obterCodeDeTecla(tecla) {
+    const mapeamentoTeclas = {
+      'a': 'KeyA', 'b': 'KeyB', 'c': 'KeyC', 'd': 'KeyD', 'e': 'KeyE', 'f': 'KeyF',
+      'g': 'KeyG', 'h': 'KeyH', 'i': 'KeyI', 'j': 'KeyJ', 'k': 'KeyK', 'l': 'KeyL',
+      'm': 'KeyM', 'n': 'KeyN', 'o': 'KeyO', 'p': 'KeyP', 'q': 'KeyQ', 'r': 'KeyR',
+      's': 'KeyS', 't': 'KeyT', 'u': 'KeyU', 'v': 'KeyV', 'w': 'KeyW', 'x': 'KeyX',
+      'y': 'KeyY', 'z': 'KeyZ',
+      '0': 'Digit0', '1': 'Digit1', '2': 'Digit2', '3': 'Digit3', '4': 'Digit4',
+      '5': 'Digit5', '6': 'Digit6', '7': 'Digit7', '8': 'Digit8', '9': 'Digit9',
+      ' ': 'Space', '.': 'Period', ',': 'Comma', ';': 'Semicolon', "'": 'Quote',
+      '[': 'BracketLeft', ']': 'BracketRight', '\\': 'Backslash', '-': 'Minus',
+      '=': 'Equal', '/': 'Slash', '`': 'Backquote', 'Backspace': 'Backspace',
+      'Enter': 'Enter', 'Tab': 'Tab'
+    };
+    
+    return mapeamentoTeclas[tecla.toLowerCase()] || 'Unidentified';
+  },
+  
+  /**
+   * Verifica se duas teclas estão próximas no teclado
+   * @param {string} tecla1 - Primeira tecla
+   * @param {string} tecla2 - Segunda tecla
+   * @returns {boolean} - True se as teclas estão próximas
+   */
+  teclasProximas(tecla1, tecla2) {
+    const mapaProximidade = {
+      'q': ['w', 'a', '1', '2'],
+      'w': ['q', 'e', 'a', 's', '2', '3'],
+      'e': ['w', 'r', 's', 'd', '3', '4'],
+      'r': ['e', 't', 'd', 'f', '4', '5'],
+      't': ['r', 'y', 'f', 'g', '5', '6'],
+      'y': ['t', 'u', 'g', 'h', '6', '7'],
+      'u': ['y', 'i', 'h', 'j', '7', '8'],
+      'i': ['u', 'o', 'j', 'k', '8', '9'],
+      'o': ['i', 'p', 'k', 'l', '9', '0'],
+      'p': ['o', '[', 'l', ';', '0', '-'],
+      'a': ['q', 'w', 's', 'z'],
+      's': ['w', 'e', 'a', 'd', 'z', 'x'],
+      'd': ['e', 'r', 's', 'f', 'x', 'c'],
+      'f': ['r', 't', 'd', 'g', 'c', 'v'],
+      'g': ['t', 'y', 'f', 'h', 'v', 'b'],
+      'h': ['y', 'u', 'g', 'j', 'b', 'n'],
+      'j': ['u', 'i', 'h', 'k', 'n', 'm'],
+      'k': ['i', 'o', 'j', 'l', 'm', ','],
+      'l': ['o', 'p', 'k', ';', ',', '.'],
+      'z': ['a', 's', 'x'],
+      'x': ['s', 'd', 'z', 'c'],
+      'c': ['d', 'f', 'x', 'v'],
+      'v': ['f', 'g', 'c', 'b'],
+      'b': ['g', 'h', 'v', 'n'],
+      'n': ['h', 'j', 'b', 'm'],
+      'm': ['j', 'k', 'n', ','],
+      ',': ['k', 'l', 'm', '.'],
+      '.': ['l', ';', ',', '/'],
+      '1': ['q', '2'],
+      '2': ['1', 'q', 'w', '3'],
+      '3': ['2', 'w', 'e', '4'],
+      '4': ['3', 'e', 'r', '5'],
+      '5': ['4', 'r', 't', '6'],
+      '6': ['5', 't', 'y', '7'],
+      '7': ['6', 'y', 'u', '8'],
+      '8': ['7', 'u', 'i', '9'],
+      '9': ['8', 'i', 'o', '0'],
+      '0': ['9', 'o', 'p', '-'],
+      '-': ['0', 'p', '[', '='],
+      '=': ['-', '[', ']'],
+      '[': ['p', ']', '='],
+      ']': ['[', '\\'],
+      '\\': [']'],
+      ';': ['l', "'", '.', '/'],
+      "'": [';', '\\'],
+      '/': ['.', ';', "'"]
+    };
+    
+    const t1 = tecla1.toLowerCase();
+    const t2 = tecla2.toLowerCase();
+    
+    return mapaProximidade[t1] && mapaProximidade[t1].includes(t2);
+  },
+  
+  /**
+   * Obtém caracteres próximos a uma tecla específica no teclado
+   * @param {string} tecla - Tecla para encontrar vizinhos
+   * @returns {string[]} - Array de caracteres próximos
+   */
+  obterCaracteresProximosTeclado(tecla) {
+    const mapaProximidade = {
+      'q': ['w', 'a', '1', '2'],
+      'w': ['q', 'e', 'a', 's', '2', '3'],
+      'e': ['w', 'r', 's', 'd', '3', '4'],
+      'r': ['e', 't', 'd', 'f', '4', '5'],
+      't': ['r', 'y', 'f', 'g', '5', '6'],
+      'y': ['t', 'u', 'g', 'h', '6', '7'],
+      'u': ['y', 'i', 'h', 'j', '7', '8'],
+      'i': ['u', 'o', 'j', 'k', '8', '9'],
+      'o': ['i', 'p', 'k', 'l', '9', '0'],
+      'p': ['o', '[', 'l', ';', '0', '-'],
+      'a': ['q', 'w', 's', 'z'],
+      's': ['w', 'e', 'a', 'd', 'z', 'x'],
+      'd': ['e', 'r', 's', 'f', 'x', 'c'],
+      'f': ['r', 't', 'd', 'g', 'c', 'v'],
+      'g': ['t', 'y', 'f', 'h', 'v', 'b'],
+      'h': ['y', 'u', 'g', 'j', 'b', 'n'],
+      'j': ['u', 'i', 'h', 'k', 'n', 'm'],
+      'k': ['i', 'o', 'j', 'l', 'm', ','],
+      'l': ['o', 'p', 'k', ';', ',', '.'],
+      'z': ['a', 's', 'x'],
+      'x': ['s', 'd', 'z', 'c'],
+      'c': ['d', 'f', 'x', 'v'],
+      'v': ['f', 'g', 'c', 'b'],
+      'b': ['g', 'h', 'v', 'n'],
+      'n': ['h', 'j', 'b', 'm'],
+      'm': ['j', 'k', 'n', ','],
+      ',': ['k', 'l', 'm', '.'],
+      '.': ['l', ';', ',', '/'],
+      '1': ['q', '2'],
+      '2': ['1', 'q', 'w', '3'],
+      '3': ['2', 'w', 'e', '4'],
+      '4': ['3', 'e', 'r', '5'],
+      '5': ['4', 'r', 't', '6'],
+      '6': ['5', 't', 'y', '7'],
+      '7': ['6', 'y', 'u', '8'],
+      '8': ['7', 'u', 'i', '9'],
+      '9': ['8', 'i', 'o', '0'],
+      '0': ['9', 'o', 'p', '-'],
+      '-': ['0', 'p', '[', '='],
+      '=': ['-', '[', ']'],
+      '[': ['p', ']', '='],
+      ']': ['[', '\\'],
+      '\\': [']'],
+      ';': ['l', "'", '.', '/'],
+      "'": [';', '\\'],
+      '/': ['.', ';', "'"],
+      ' ': ['c', 'v', 'b', 'n', 'm']
+    };
+    
+    const t = tecla.toLowerCase();
+    return mapaProximidade[t] || [];
+  },
+  
+  /**
+   * Simula o upload de um arquivo
+   * @param {Element} inputElement - Elemento de input file
+   * @param {File|File[]} arquivos - Arquivo(s) para upload
+   * @returns {Promise} - Promessa que resolve após o upload
+   */
+  async uploadArquivo(inputElement, arquivos) {
+    if (!inputElement || inputElement.type !== 'file') {
+      throw new Error('Elemento de input de arquivo inválido');
+    }
+    
+    // Rola a página para o elemento, se necessário
+    this.rolarParaElemento(inputElement);
+    await this.delay(300, 700);
+    
+    // Cria um DataTransfer para simular o upload
+    const dataTransfer = new DataTransfer();
+    
+    // Adiciona os arquivos ao DataTransfer
+    if (Array.isArray(arquivos)) {
+      arquivos.forEach(arquivo => dataTransfer.items.add(arquivo));
+    } else {
+      dataTransfer.items.add(arquivos);
+    }
+    
+    // Define os arquivos no input
+    inputElement.files = dataTransfer.files;
+    
+    // Dispara eventos necessários
+    inputElement.dispatchEvent(new Event('change', { bubbles: true }));
+    
+    // Aguarda um tempo após o upload
+    await this.delay(1000, 2000);
+  },
+  
+  /**
+   * Simula a seleção de um item em um elemento select
+   * @param {Element} selectElement - Elemento select
+   * @param {string|number} valor - Valor a ser selecionado
+   * @returns {Promise} - Promessa que resolve após a seleção
+   */
+  async selecionarOpcao(selectElement, valor) {
+    if (!selectElement || selectElement.tagName !== 'SELECT') {
+      throw new Error('Elemento select inválido');
+    }
+    
+    // Foca no elemento
+    await this.clicar(selectElement);
+    
+    // Encontra a opção com o valor especificado
+    let opcaoEncontrada = false;
+    for (const option of selectElement.options) {
+      if (option.value === valor || option.textContent === valor) {
+        selectElement.value = option.value;
+        opcaoEncontrada = true;
+        break;
+      }
+    }
+    
+    if (!opcaoEncontrada) {
+      throw new Error(`Opção com valor "${valor}" não encontrada no select`);
+    }
+    
+    // Dispara eventos
+    selectElement.dispatchEvent(new Event('change', { bubbles: true }));
+    
+    // Aguarda um tempo após a seleção
+    await this.delay();
+  }
+};
+
+export default HumanSimulation;
+
+
+== utils/shadow-dom.js ==
+/**
+ * Utilitário para manipulação de Shadow DOM
+ * Fornece funções para acessar e manipular elementos dentro do Shadow DOM
+ */
+
+const ShadowDOMUtils = {
+  /**
+   * Encontra um elemento dentro do Shadow DOM
+   * @param {string} selector - Seletor CSS para encontrar o elemento
+   * @param {Element} root - Elemento raiz para iniciar a busca (opcional)
+   * @param {boolean} recursivo - Se deve buscar recursivamente em todos os shadow roots
+   * @returns {Element|null} - O elemento encontrado ou null
+   */
+  encontrarElemento(selector, root = document.body, recursivo = true) {
+    // Verifica se o elemento está no DOM regular
+    let elemento = root.querySelector(selector);
+    if (elemento) return elemento;
+    
+    // Busca entre os elementos com shadow root
+    const elementosComShadow = root.querySelectorAll('*');
+    for (const el of elementosComShadow) {
+      if (el.shadowRoot) {
+        // Tenta encontrar no shadow root atual
+        elemento = el.shadowRoot.querySelector(selector);
+        if (elemento) return elemento;
+        
+        // Busca recursivamente se necessário
+        if (recursivo) {
+          elemento = this.encontrarElemento(selector, el.shadowRoot, true);
+          if (elemento) return elemento;
+        }
+      }
+    }
+    
+    return null;
+  },
+  
+  /**
+   * Encontra todos os elementos que correspondem ao seletor no Shadow DOM
+   * @param {string} selector - Seletor CSS para encontrar os elementos
+   * @param {Element} root - Elemento raiz para iniciar a busca (opcional)
+   * @param {boolean} recursivo - Se deve buscar recursivamente em todos os shadow roots
+   * @returns {Element[]} - Array com os elementos encontrados
+   */
+  encontrarTodosElementos(selector, root = document.body, recursivo = true) {
+    let elementos = [];
+    
+    // Adiciona elementos do DOM regular
+    elementos = [...root.querySelectorAll(selector)];
+    
+    // Busca entre os elementos com shadow root
+    const elementosComShadow = root.querySelectorAll('*');
+    for (const el of elementosComShadow) {
+      if (el.shadowRoot) {
+        // Adiciona os elementos do shadow root atual
+        elementos = [...elementos, ...el.shadowRoot.querySelectorAll(selector)];
+        
+        // Busca recursivamente se necessário
+        if (recursivo) {
+          elementos = [...elementos, ...this.encontrarTodosElementos(selector, el.shadowRoot, true)];
+        }
+      }
+    }
+    
+    return elementos;
+  },
+  
+  /**
+   * Encontra elemento no Shadow DOM esperando que ele esteja disponível
+   * @param {string} selector - Seletor CSS para encontrar o elemento
+   * @param {Element} root - Elemento raiz para iniciar a busca (opcional)
+   * @param {number} timeout - Tempo máximo de espera em ms (padrão: 10000ms)
+   * @param {boolean} recursivo - Se deve buscar recursivamente em todos os shadow roots
+   * @returns {Promise<Element>} - Promessa que resolve para o elemento encontrado
+   */
+  async aguardarElemento(selector, root = document.body, timeout = 10000, recursivo = true) {
+    return new Promise((resolve, reject) => {
+      // Verifica se o elemento já existe
+      const elementoExistente = this.encontrarElemento(selector, root, recursivo);
+      if (elementoExistente) {
+        return resolve(elementoExistente);
+      }
+      
+      // Configura temporizador para timeout
+      const timeoutId = setTimeout(() => {
+        observer.disconnect();
+        reject(new Error(`Timeout ao aguardar pelo elemento: ${selector}`));
+      }, timeout);
+      
+      // Configura MutationObserver para detectar mudanças no DOM
+      const observer = new MutationObserver((mutations) => {
+        const elemento = this.encontrarElemento(selector, root, recursivo);
+        if (elemento) {
+          clearTimeout(timeoutId);
+          observer.disconnect();
+          resolve(elemento);
+        }
+      });
+      
+      // Inicia observação no DOM e em todos os shadow roots
+      observer.observe(root, {
+        childList: true,
+        subtree: true
+      });
+      
+      // Observa também mudanças em shadow roots existentes
+      const shadowRoots = [];
+      const coletarShadowRoots = (element) => {
+        if (element.shadowRoot) {
+          shadowRoots.push(element.shadowRoot);
+          observer.observe(element.shadowRoot, {
+            childList: true,
+            subtree: true
+          });
+        }
+        
+        Array.from(element.children).forEach(coletarShadowRoots);
+      };
+      
+      coletarShadowRoots(root);
+    });
+  },
+  
+  /**
+   * Encontra o shadow root mais profundo de um elemento
+   * @param {Element} elemento - Elemento para encontrar o shadow root mais profundo
+   * @returns {ShadowRoot|null} - O shadow root mais profundo ou null
+   */
+  encontrarShadowRootMaisProfundo(elemento) {
+    if (!elemento) return null;
+    
+    // Se o elemento tem um shadow root, continua a busca nele
+    if (elemento.shadowRoot) {
+      // Pega todos os elementos com potencial shadow root
+      const filhos = Array.from(elemento.shadowRoot.querySelectorAll('*'));
+      
+      // Procura o primeiro filho com shadow root
+      for (const filho of filhos) {
+        const shadowProfundo = this.encontrarShadowRootMaisProfundo(filho);
+        if (shadowProfundo) return shadowProfundo;
+      }
+      
+      // Se nenhum filho tem shadow root, retorna o shadow root atual
+      return elemento.shadowRoot;
+    }
+    
+    return null;
+  },
+  
+  /**
+   * Cria um seletor CSS único para um elemento
+   * @param {Element} elemento - Elemento para criar o seletor
+   * @returns {string} - Seletor CSS único
+   */
+  criarSeletorUnico(elemento) {
+    if (!elemento || elemento === document || elemento === document.documentElement) {
+      return '';
+    }
+    
+    let seletor = elemento.tagName.toLowerCase();
+    
+    // Adiciona ID se disponível
+    if (elemento.id) {
+      return `${seletor}#${elemento.id}`;
+    }
+    
+    // Adiciona classes se disponíveis
+    if (elemento.className && typeof elemento.className === 'string') {
+      const classes = elemento.className.trim().split(/\s+/);
+      if (classes.length > 0) {
+        seletor += '.' + classes.join('.');
+      }
+    }
+    
+    // Adiciona atributos que ajudam a identificar o elemento
+    ['name', 'data-testid', 'aria-label'].forEach(attr => {
+      if (elemento.hasAttribute(attr)) {
+        seletor += `[${attr}="${elemento.getAttribute(attr)}"]`;
+      }
+    });
+    
+    // Adiciona posição entre irmãos se necessário
+    const parent = elemento.parentNode;
+    if (parent && parent.children.length > 1) {
+      const siblings = Array.from(parent.children);
+      const index = siblings.indexOf(elemento);
+      if (index !== -1) {
+        seletor += `:nth-child(${index + 1})`;
+      }
+    }
+    
+    return seletor;
+  },
+  
+  /**
+   * Mapeia o caminho de shadow roots para um elemento
+   * @param {Element} elemento - Elemento para mapear o caminho
+   * @returns {Array} - Array com o caminho de hosts e seletores
+   */
+  mapearCaminhoShadow(elemento) {
+    const caminho = [];
+    let elementoAtual = elemento;
+    let root = document;
+    
+    while (elementoAtual && elementoAtual !== document.documentElement) {
+      // Verifica se o elemento está em um shadow root
+      const hostShadow = elementoAtual.getRootNode()?.host;
+      
+      if (hostShadow) {
+        // Adiciona o host e o seletor do elemento dentro do shadow root
+        caminho.unshift({
+          host: this.criarSeletorUnico(hostShadow),
+          seletorInterno: this.criarSeletorUnico(elementoAtual)
+        });
+        
+        // Move para o host do shadow root
+        elementoAtual = hostShadow;
+      } else {
+        // Se não está em shadow root, move para o pai
+        elementoAtual = elementoAtual.parentElement;
+      }
+    }
+    
+    return caminho;
+  },
+  
+  /**
+   * Acessa um elemento usando um caminho de shadow roots
+   * @param {Array} caminho - Caminho de shadow roots obtido com mapearCaminhoShadow
+   * @returns {Element|null} - O elemento encontrado ou null
+   */
+  acessarPorCaminhoShadow(caminho) {
+    let elementoAtual = document.documentElement;
+    
+    for (const passo of caminho) {
+      // Encontra o host do shadow root
+      const host = document.querySelector(passo.host);
+      if (!host || !host.shadowRoot) return null;
+      
+      // Encontra o elemento dentro do shadow root
+      elementoAtual = host.shadowRoot.querySelector(passo.seletorInterno);
+      if (!elementoAtual) return null;
+    }
+    
+    return elementoAtual;
+  }
+};
+
+export default ShadowDOMUtils;
+
+
+== utils/hotmart-navigator.js ==
+/**
+ * Utilitário para navegação na Hotmart
+ * Fornece funções para interação com a plataforma Hotmart
+ */
+
+class HotmartNavigator {
+  constructor(humanSim, shadowDOM) {
+    this.humanSim = humanSim;
+    this.shadowDOM = shadowDOM;
+    this.config = {
+      verificarSucessoUpload: true,
+      timeoutDeteccaoPagina: 10000
+    };
+  }
+
+  /**
+   * Configura as opções do navegador
+   * @param {Object} config - Objeto com configurações
+   */
+  configurar(config) {
+    this.config = { ...this.config, ...config };
+  }
+
+  /**
+   * Detecta a página atual da Hotmart
+   * @returns {Promise<string>} - Nome da página detectada
+   */
+  async detectarPagina() {
+    const url = window.location.href;
+
+    // Verifica URLs para determinar a página
+    if (url.includes('/area-de-membros')) {
+      return 'area_membros';
+    } else if (url.includes('/produto')) {
+      return 'produto';
+    } else if (url.includes('/checkout')) {
+      return 'checkout';
+    } else if (url.includes('/admin')) {
+      return 'admin';
+    } else if (url.includes('/dashboard')) {
+      return 'dashboard';
+    } else if (url.includes('/conteudo') || url.includes('/content')) {
+      return 'conteudo';
+    } else if (url.includes('/precificacao') || url.includes('/pricing')) {
+      return 'precificacao';
+    } else if (url.includes('/upload')) {
+      return 'upload';
+    } else {
+      // Detecta por elementos na página
+      try {
+        // Aguarda carregamento mínimo da página
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        
+        // Procura por elementos que identifiquem a página
+        const titulo = document.title.toLowerCase();
+        const textosPagina = Array.from(document.querySelectorAll('h1, h2, h3, div.header, div.title'))
+          .map(el => el.textContent.toLowerCase())
+          .join(' ');
+        
+        if (textosPagina.includes('upload') || textosPagina.includes('arquivo') || 
+            textosPagina.includes('file') || titulo.includes('upload')) {
+          return 'upload';
+        } else if (textosPagina.includes('precificação') || textosPagina.includes('pricing') || 
+                  textosPagina.includes('preço') || textosPagina.includes('price')) {
+          return 'precificacao';
+        } else if (textosPagina.includes('conteúdo') || textosPagina.includes('content') || 
+                  textosPagina.includes('módulo') || textosPagina.includes('module')) {
+          return 'conteudo';
+        } else if (textosPagina.includes('dashboard') || textosPagina.includes('painel') || 
+                  textosPagina.includes('estatística') || textosPagina.includes('stats')) {
+          return 'dashboard';
+        }
+      } catch (e) {
+        console.error('Erro ao detectar página por conteúdo:', e);
+      }
+      
+      return 'desconhecida';
+    }
+  }
+
+  /**
+   * Executa a navegação baseada na página atual
+   * @param {string} pagina - Nome da página atual
+   * @param {Object} config - Configurações específicas para esta navegação
+   * @returns {Promise<boolean>} - Se a navegação foi bem-sucedida
+   */
+  async navegarPagina(pagina, config = {}) {
+    console.log(`Navegando na página: ${pagina}`);
+    
+    switch(pagina) {
+      case 'upload':
+        return await this.processarPaginaUpload(config);
+      case 'precificacao':
+        return await this.processarPaginaPrecificacao(config);
+      case 'conteudo':
+        return await this.processarPaginaConteudo(config);
+      default:
+        console.log(`Navegação para página "${pagina}" não implementada`);
+        return false;
+    }
+  }
+
+  /**
+   * Processa a página de upload de arquivos
+   * @param {Object} config - Configurações específicas para upload
+   * @returns {Promise<boolean>} - Se o processamento foi bem-sucedido
+   */
+  async processarPaginaUpload(config = {}) {
+    console.log('Processando página de upload');
+    
+    try {
+      // Verifica se há arquivos prontos para upload
+      const arquivosProntos = config.arquivos;
+      
+      // Procura pelo botão/área de upload
+      const seletoresBotaoUpload = [
+        'input[type="file"]',
+        'input[accept*="image"], input[accept*="pdf"], input[accept*="video"]',
+        'div[role="button"][data-testid*="upload"]',
+        'div.upload-area, div.dropzone, div.file-input',
+        'button:contains("Upload"), button:contains("Enviar arquivo"), button:contains("Escolher arquivo")'
+      ];
+      
+      let botaoUpload = null;
+      
+      for (const seletor of seletoresBotaoUpload) {
+        try {
+          botaoUpload = await this.shadowDOM.aguardarElemento(
+            seletor,
+            document.body,
+            5000,
+            true
+          );
+          
+          if (botaoUpload) {
+            console.log(`Botão de upload encontrado: ${seletor}`);
+            break;
+          }
+        } catch (e) {
+          // Continua tentando outros seletores
+        }
+      }
+      
+      if (botaoUpload) {
+        // Encontra o input de arquivo
+        // Se o botão encontrado não é um input, procuramos por inputs relacionados
+        let inputArquivo = botaoUpload;
+        
+        if (botaoUpload.tagName !== 'INPUT') {
+          // Tenta encontrar o input de arquivo
+          let inputBuscado = null;
+          
+          // Tenta primeiro encontrar filhos do botão
+          inputBuscado = botaoUpload.querySelector('input[type="file"]');
+          
+          // Se não encontrar, busca globalmente, mas prioriza elementos próximos
+          if (!inputBuscado) {
+            const todosInputs = document.querySelectorAll('input[type="file"]');
+            if (todosInputs.length > 0) {
+              inputBuscado = todosInputs[0];
+            }
+          }
+          
+          if (inputBuscado) {
+            inputArquivo = inputBuscado;
+            console.log('Input de arquivo encontrado');
+          } else {
+            // Tenta injetar um input de arquivo temporário para simular a abertura da caixa de diálogo
+            const tempInput = document.createElement('input');
+            tempInput.type = 'file';
+            tempInput.style.position = 'absolute';
+            tempInput.style.top = '-1000px';
+            tempInput.style.left = '-1000px';
+            document.body.appendChild(tempInput);
+            
+            // Simula clique no botão
+            await this.humanSim.clicar(botaoUpload);
+            console.log('Clicou no botão de upload');
+            
+            // Guarda referência ao input temporário
+            inputArquivo = tempInput;
+            
+            // Configuramos um timeout para remover o input temporário
+            setTimeout(() => {
+              document.body.removeChild(tempInput);
+            }, 10000);
+          }
+        }
+        
+        if (inputArquivo) {
+          // Vamos garantir que o input esteja visível momentaneamente para o FileReader
+          const visibilityOriginal = inputArquivo.style.visibility;
+          const displayOriginal = inputArquivo.style.display;
+          
+          inputArquivo.style.visibility = 'visible';
+          inputArquivo.style.display = 'block';
+          
+          // Configura um timeout para restaurar a visibilidade original
+          setTimeout(() => {
+            inputArquivo.style.display = displayOriginal;
+            inputArquivo.style.visibility = visibilityOriginal;
+          }, 10000);
+          
+          // Se temos arquivos para upload, vamos usá-los
+          if (arquivosProntos) {
+            console.log('Preparando arquivos para upload automático');
+            
+            // Verifica se existem configurações específicas para o upload
+            let modoLote = false;
+            let limiteArquivos = 50;
+            
+            // Obtém configurações do armazenamento
+            await new Promise((resolve) => {
+              chrome.storage.local.get('configAutomacao', (result) => {
+                if (result.configAutomacao) {
+                  modoLote = result.configAutomacao.modoLote !== undefined ? 
+                             result.configAutomacao.modoLote : false;
+                  
+                  limiteArquivos = result.configAutomacao.limiteArquivos !== undefined ? 
+                                  result.configAutomacao.limiteArquivos : 50;
+                }
+                resolve();
+              });
+            });
+            
+            console.log(`Modo de lote: ${modoLote}, Limite de arquivos por upload: ${limiteArquivos}`);
+            
+            // Determina qual arquivo usar com base no contexto
+            // (capa, conteúdo principal ou arquivos adicionais)
+            let arquivosParaUpload = [];
+            let tipoUpload = 'desconhecido';
+            
+            // Tenta identificar qual tipo de upload estamos fazendo baseado na interface/contexto
+            const textosPagina = Array.from(document.querySelectorAll('h1, h2, h3, p, label, div, span'))
+              .map(el => el.textContent.toLowerCase())
+              .join(' ');
+            
+            const isUploadCapa = textosPagina.includes('capa') || 
+                                textosPagina.includes('imagem') || 
+                                textosPagina.includes('cover') || 
+                                textosPagina.includes('image');
+                                
+            const isUploadPrincipal = textosPagina.includes('principal') || 
+                                      textosPagina.includes('conteúdo') || 
+                                      textosPagina.includes('main') || 
+                                      textosPagina.includes('content');
+            
+            const isMultiUpload = textosPagina.includes('múltiplos') || 
+                                 textosPagina.includes('multiple') || 
+                                 textosPagina.includes('batch') || 
+                                 textosPagina.includes('lote') ||
+                                 inputArquivo.multiple;
+                                 
+            if (isUploadCapa && arquivosProntos.capa) {
+              arquivosParaUpload = [arquivosProntos.capa];
+              tipoUpload = 'capa';
+            } else if (isUploadPrincipal && arquivosProntos.conteudo) {
+              arquivosParaUpload = [arquivosProntos.conteudo];
+              tipoUpload = 'conteúdo principal';
+            } else if (isMultiUpload && arquivosProntos.adicionais && arquivosProntos.adicionais.length > 0) {
+              arquivosParaUpload = arquivosProntos.adicionais;
+              tipoUpload = 'múltiplos arquivos';
+            } else if (arquivosProntos.conteudo) {
+              arquivosParaUpload = [arquivosProntos.conteudo];
+              tipoUpload = 'conteúdo';
+            } else if (arquivosProntos.capa) {
+              arquivosParaUpload = [arquivosProntos.capa];
+              tipoUpload = 'capa';
+            } else if (arquivosProntos.adicionais && arquivosProntos.adicionais.length > 0) {
+              // Se não conseguimos determinar o tipo mas temos arquivos adicionais
+              arquivosParaUpload = [arquivosProntos.adicionais[0]]; // Usamos o primeiro
+              tipoUpload = 'arquivo individual';
+            }
+            
+            if (arquivosParaUpload.length > 0) {
+              if (modoLote && isMultiUpload && arquivosParaUpload.length > limiteArquivos) {
+                console.log(`Iniciando upload em lote de ${arquivosParaUpload.length} arquivos em grupos de ${limiteArquivos}`);
+                
+                // Divide os arquivos em lotes
+                const totalLotes = Math.ceil(arquivosParaUpload.length / limiteArquivos);
+                
+                for (let loteAtual = 0; loteAtual < totalLotes; loteAtual++) {
+                  // Calcula o intervalo do lote atual
+                  const inicio = loteAtual * limiteArquivos;
+                  const fim = Math.min(inicio + limiteArquivos, arquivosParaUpload.length);
+                  const arquivosLote = arquivosParaUpload.slice(inicio, fim);
+                  
+                  console.log(`Processando lote ${loteAtual + 1}/${totalLotes} com ${arquivosLote.length} arquivos`);
+                  
+                  // Para cada lote, cria um novo DataTransfer
+                  const dataTransfer = new DataTransfer();
+                  
+                  // Converte e adiciona cada arquivo ao DataTransfer
+                  for (const arquivoInfo of arquivosLote) {
+                    try {
+                      // Converte o dataUrl para Blob
+                      const response = await fetch(arquivoInfo.dataUrl);
+                      const blob = await response.blob();
+                      
+                      // Cria um File a partir do Blob
+                      const file = new File([blob], arquivoInfo.name, { type: arquivoInfo.type });
+                      
+                      // Adiciona ao DataTransfer
+                      dataTransfer.items.add(file);
+                    } catch (e) {
+                      console.error(`Erro ao processar arquivo ${arquivoInfo.name}:`, e);
+                    }
+                  }
+                  
+                  // Simula comportamento humano: clica no input antes
+                  await this.humanSim.clicar(inputArquivo);
+                  await this.humanSim.delay(500, 1000);
+                  
+                  // Define os arquivos no input
+                  inputArquivo.files = dataTransfer.files;
+                  
+                  // Dispara eventos necessários para que o site detecte a mudança
+                  inputArquivo.dispatchEvent(new Event('change', { bubbles: true }));
+                  
+                  console.log(`Lote ${loteAtual + 1} definido no input (${dataTransfer.files.length} arquivos), aguardando processamento...`);
+                  await this.humanSim.delay(1000, 2000);
+                  
+                  // Procura e clica no botão de confirmar
+                  const confirmouUpload = await this.confirmarUploadEAguardar();
+                  
+                  // Se não for o último lote, vamos aguardar mais e depois procurar o botão de adicionar mais arquivos
+                  if (loteAtual < totalLotes - 1 && confirmouUpload) {
+                    await this.humanSim.delay(3000, 6000);
+                    
+                    // Tenta encontrar um botão de adicionar mais arquivos
+                    console.log("Buscando botão para adicionar mais arquivos...");
+                    const botaoAdicionarMais = await this.encontrarBotaoAdicionarMais();
+                    
+                    if (botaoAdicionarMais) {
+                      await this.humanSim.clicar(botaoAdicionarMais);
+                      await this.humanSim.delay(1500, 3000);
+                    } else {
+                      console.log("Não foi possível encontrar botão para adicionar mais arquivos. Interrompendo upload em lote.");
+                      break;
+                    }
+                  }
+                }
+              } else {
+                // Upload normal (não em lote)
+                console.log(`Realizando upload de ${tipoUpload}: ${arquivosParaUpload.length} arquivo(s)`);
+                
+                // Cria um DataTransfer para simular a seleção do arquivo
+                const dataTransfer = new DataTransfer();
+                
+                // Processa todos os arquivos (seja um único ou múltiplos)
+                for (const arquivoInfo of arquivosParaUpload) {
+                  try {
+                    // Converte o dataUrl para Blob
+                    const response = await fetch(arquivoInfo.dataUrl);
+                    const blob = await response.blob();
+                    
+                    // Cria um File a partir do Blob
+                    const file = new File([blob], arquivoInfo.name, { type: arquivoInfo.type });
+                    
+                    // Adiciona ao DataTransfer
+                    dataTransfer.items.add(file);
+                  } catch (e) {
+                    console.error(`Erro ao processar arquivo ${arquivoInfo.name}:`, e);
+                  }
+                }
+                
+                // Simula comportamento humano: clica no input antes
+                await this.humanSim.clicar(inputArquivo);
+                await this.humanSim.delay(500, 1000);
+                
+                // Define o arquivo no input
+                inputArquivo.files = dataTransfer.files;
+                
+                // Dispara eventos necessários para que o site detecte a mudança
+                inputArquivo.dispatchEvent(new Event('change', { bubbles: true }));
+                
+                console.log('Arquivo(s) definido(s) no input, aguardando processamento...');
+                await this.humanSim.delay(1000, 2000);
+                
+                // Confirma o upload e aguarda o resultado
+                await this.confirmarUploadEAguardar();
+              }
+            } else {
+              // Não encontramos arquivos compatíveis para esta página
+              await this.cancelarUploadVazio();
+            }
+          } else {
+            // Sem arquivos pré-configurados, o usuário precisa selecionar manualmente
+            console.log('Nenhum arquivo pré-configurado, precisamos de interação manual');
+            
+            // Simula comportamento humano
+            await this.humanSim.clicar(inputArquivo);
+            console.log('Clicou no input de arquivo');
+            
+            // Alerta o usuário para selecionar o arquivo manualmente
+            alert('Por favor, selecione o arquivo para upload na caixa de diálogo que se abrirá. A automação continuará após a seleção.');
+            
+            // Aguarda um tempo para o usuário selecionar o arquivo
+            await this.humanSim.delay(10000, 15000);
+            
+            // Confirma o upload e aguarda o resultado
+            await this.confirmarUploadEAguardar();
+          }
+        } else {
+          console.error('Input de arquivo não encontrado');
+          return false;
+        }
+      } else {
+        console.error('Botão de upload não encontrado');
+        return false;
+      }
+      
+      return true;
+    } catch (erro) {
+      console.error('Erro durante o upload de arquivos:', erro);
+      return false;
+    }
+  }
+  
+  /**
+   * Procura e clica no botão de confirmar upload, aguardando o resultado
+   * @returns {Promise<boolean>} - Se o upload foi confirmado com sucesso
+   */
+  async confirmarUploadEAguardar() {
+    // Procura pelo botão de confirmar upload
+    const seletoresBotaoConfirmar = [
+      'button:contains("Confirmar")',
+      'button:contains("Confirm")',
+      'button:contains("Enviar")',
+      'button:contains("Submit")',
+      'button:contains("Upload")',
+      'button:contains("Salvar")',
+      'button:contains("Save")',
+      'button[type="submit"]',
+      'button.primary',
+      'button.btn-primary',
+      'button.confirm-button'
+    ];
+    
+    let botaoConfirmar = null;
+    for (const seletor of seletoresBotaoConfirmar) {
+      try {
+        botaoConfirmar = await this.shadowDOM.aguardarElemento(
+          seletor,
+          document.body,
+          3000,
+          true
+        );
+        
+        if (botaoConfirmar) {
+          console.log(`Botão de confirmar encontrado com seletor: ${seletor}`);
+          break;
+        }
+      } catch (e) {
+        // Continua tentando outros seletores
+      }
+    }
+    
+    if (botaoConfirmar) {
+      // Comportamento humano: espera um pouco antes de clicar no confirmar
+      await this.humanSim.delay(1000, 2000);
+      
+      await this.humanSim.clicar(botaoConfirmar);
+      console.log('Clicou no botão de confirmar upload');
+      
+      // Verifica se o upload foi bem-sucedido
+      if (this.config.verificarSucessoUpload) {
+        await this.verificarSucessoUpload();
+      }
+      
+      return true;
+    } else {
+      console.log('Botão de confirmar não encontrado, mas o arquivo foi selecionado');
+      // Em alguns casos o upload pode ser automático após a seleção
+      return false;
+    }
+  }
+  
+  /**
+   * Encontra um botão para adicionar mais arquivos após um upload
+   * @returns {Promise<Element|null>} - Elemento do botão encontrado ou null
+   */
+  async encontrarBotaoAdicionarMais() {
+    const seletoresBotaoAdicionar = [
+      'button:contains("Adicionar mais")',
+      'button:contains("Add more")',
+      'button:contains("Novo upload")',
+      'button:contains("Novo arquivo")',
+      'button:contains("Adicionar arquivo")',
+      'button:contains("Upload")',
+      'button:contains("Adicionar")',
+      'button:contains("Add")',
+      'a:contains("Adicionar")',
+      'a:contains("Upload")',
+      '[data-testid*="add-more"]',
+      '[data-testid*="upload-button"]'
+    ];
+    
+    let botaoAdicionar = null;
+    
+    for (const seletor of seletoresBotaoAdicionar) {
+      try {
+        botaoAdicionar = await this.shadowDOM.aguardarElemento(
+          seletor,
+          document.body,
+          2000,
+          true
+        );
+        
+        if (botaoAdicionar) {
+          console.log(`Botão para adicionar mais arquivos encontrado: ${seletor}`);
+          return botaoAdicionar;
+        }
+      } catch (e) {
+        // Continua tentando outros seletores
+      }
+    }
+    
+    return null;
+  }
+  
+  /**
+   * Processa situação onde não há arquivos compatíveis para upload
+   */
+  async cancelarUploadVazio() {
+    console.log('Nenhum arquivo compatível encontrado para este upload');
+    // Simula comportamento humano cancelando a operação
+    await this.humanSim.delay(1000, 2000);
+    
+    // Tenta encontrar botão de cancelar/fechar
+    const botaoCancelar = await this.shadowDOM.encontrarElemento(
+      'button:contains("Cancelar"), button:contains("Cancel"), button:contains("Fechar"), button:contains("Close"), button.close-button',
+      document.body,
+      true
+    );
+    
+    if (botaoCancelar) {
+      await this.humanSim.clicar(botaoCancelar);
+      console.log('Operação cancelada, nenhum arquivo compatível');
+    }
+  }
+  
+  /**
+   * Verifica se o upload foi bem-sucedido
+   * @returns {Promise<boolean>} - Se o upload foi bem-sucedido
+   */
+  async verificarSucessoUpload() {
+    console.log('Verificando se o upload foi bem-sucedido...');
+    
+    // Aguarda um tempo para o upload processar
+    await this.humanSim.delay(3000, 5000);
+    
+    // Procura por elementos que indiquem sucesso ou erro
+    const elementosSucesso = await this.shadowDOM.encontrarTodosElementos(
+      'div:contains("sucesso"), div:contains("success"), div:contains("concluído"), div:contains("completed"), div.success, div.upload-success',
+      document.body,
+      true
+    );
+    
+    const elementosErro = await this.shadowDOM.encontrarTodosElementos(
+      'div:contains("erro"), div:contains("error"), div:contains("falha"), div:contains("failed"), div.error, div.upload-error',
+      document.body,
+      true
+    );
+    
+    if (elementosSucesso.length > 0) {
+      console.log('Upload concluído com sucesso!');
+      return true;
+    } else if (elementosErro.length > 0) {
+      console.log('Erro no upload. Falha detectada.');
+      return false;
+    } else {
+      // Não encontramos elementos explícitos, vamos assumir que foi bem-sucedido
+      console.log('Sem confirmação explícita, assumindo que o upload foi bem-sucedido');
+      return true;
+    }
+  }
+  
+  /**
+   * Processa a página de precificação
+   * @param {Object} config - Configurações específicas para precificação
+   * @returns {Promise<boolean>} - Se o processamento foi bem-sucedido
+   */
+  async processarPaginaPrecificacao(config = {}) {
+    console.log('Processando página de precificação');
+    
+    try {
+      // Implementação para manipular a página de precificação
+      // Esta é uma seção complexa da Hotmart que frequentemente usa Shadow DOM
+      
+      // Detecção de elementos dentro do Shadow DOM
+      const campoPreco = await this.shadowDOM.aguardarElemento(
+        'input[type="number"], input[placeholder*="preço"], input[placeholder*="valor"], input[placeholder*="price"]',
+        document.body,
+        10000,
+        true
+      );
+      
+      if (campoPreco) {
+        console.log('Campo de preço encontrado');
+        
+        // Define o preço (se fornecido na configuração)
+        if (config.preco) {
+          await this.humanSim.clicar(campoPreco);
+          await this.humanSim.delay(500, 1000);
+          
+          // Limpa o campo
+          campoPreco.value = '';
+          campoPreco.dispatchEvent(new Event('input', { bubbles: true }));
+          await this.humanSim.delay(300, 600);
+          
+          // Digita o novo valor
+          await this.humanSim.digitar(campoPreco, config.preco.toString());
+          console.log(`Definiu preço: ${config.preco}`);
+        }
+        
+        // Procura e clica no botão para salvar/avançar
+        const botaoSalvar = await this.shadowDOM.aguardarElemento(
+          'button:contains("Salvar"), button:contains("Save"), button:contains("Avançar"), button:contains("Next"), button[type="submit"]',
+          document.body,
+          5000,
+          true
+        );
+        
+        if (botaoSalvar) {
+          await this.humanSim.delay(1000, 2000);
+          await this.humanSim.clicar(botaoSalvar);
+          console.log('Clicou no botão de salvar/avançar');
+          
+          // Aguarda confirmação
+          await this.humanSim.delay(2000, 3000);
+          return true;
+        } else {
+          console.log('Botão de salvar não encontrado');
+        }
+      } else {
+        console.log('Campo de preço não encontrado');
+      }
+      
+      return false;
+    } catch (erro) {
+      console.error('Erro ao processar página de precificação:', erro);
+      return false;
+    }
+  }
+  
+  /**
+   * Processa a página de conteúdo
+   * @param {Object} config - Configurações específicas para conteúdo
+   * @returns {Promise<boolean>} - Se o processamento foi bem-sucedido
+   */
+  async processarPaginaConteudo(config = {}) {
+    console.log('Processando página de conteúdo');
+    
+    try {
+      // Implementação para manipular a página de conteúdo
+      // Esta seção geralmente envolve criação de módulos e lições
+      
+      // Verifica se deve criar um novo módulo
+      if (config.criarModulo) {
+        // Procura o botão de adicionar módulo
+        const botaoAdicionarModulo = await this.shadowDOM.aguardarElemento(
+          'button:contains("Adicionar módulo"), button:contains("Add module"), button:contains("Novo módulo"), button[data-testid*="module"]',
+          document.body,
+          5000,
+          true
+        );
+        
+        if (botaoAdicionarModulo) {
+          await this.humanSim.clicar(botaoAdicionarModulo);
+          console.log('Clicou no botão para adicionar módulo');
+          await this.humanSim.delay(1000, 2000);
+          
+          // Procura campo para nome do módulo
+          const campoNomeModulo = await this.shadowDOM.aguardarElemento(
+            'input[placeholder*="nome"], input[placeholder*="título"], input[placeholder*="name"], input[placeholder*="title"]',
+            document.body,
+            5000,
+            true
+          );
+          
+          if (campoNomeModulo && config.nomeModulo) {
+            await this.humanSim.clicar(campoNomeModulo);
+            await this.humanSim.delay(300, 600);
+            await this.humanSim.digitar(campoNomeModulo, config.nomeModulo);
+            console.log(`Definiu nome do módulo: ${config.nomeModulo}`);
+            
+            // Procura botão para confirmar/salvar
+            const botaoSalvarModulo = await this.shadowDOM.aguardarElemento(
+              'button:contains("Salvar"), button:contains("Save"), button:contains("Confirmar"), button:contains("Confirm"), button[type="submit"]',
+              document.body,
+              5000,
+              true
+            );
+            
+            if (botaoSalvarModulo) {
+              await this.humanSim.delay(500, 1000);
+              await this.humanSim.clicar(botaoSalvarModulo);
+              console.log('Salvou o novo módulo');
+              await this.humanSim.delay(2000, 3000);
+            }
+          }
+        }
+      }
+      
+      // Implementação para outras operações na página de conteúdo
+      
+      return true;
+    } catch (erro) {
+      console.error('Erro ao processar página de conteúdo:', erro);
+      return false;
+    }
+  }
+}
+
+// Exportação para uso em outros arquivos
+if (typeof module !== 'undefined') {
+  module.exports = HotmartNavigator;
+}
